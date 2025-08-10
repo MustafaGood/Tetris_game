@@ -1,0 +1,530 @@
+/* Tailwind CSS Directives - These are processed by Tailwind and may show warnings in CSS linters */
+/* stylelint-disable-next-line at-rule-no-unknown */
+@tailwind base;
+/* stylelint-disable-next-line at-rule-no-unknown */
+@tailwind components;
+/* stylelint-disable-next-line at-rule-no-unknown */
+@tailwind utilities;
+
+/* Custom CSS Variables */
+:root {
+  --tetris-cyan: #00f5ff;
+  --tetris-blue: #0000ff;
+  --tetris-orange: #ff7f00;
+  --tetris-yellow: #ffff00;
+  --tetris-green: #00ff00;
+  --tetris-purple: #8000ff;
+  --tetris-red: #ff0000;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Animated Moon Background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 50px;
+  right: 50px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle at 30% 30%, 
+    #ffffff 0%, 
+    #f0f0f0 20%, 
+    #e0e0e0 40%, 
+    #d0d0d0 60%, 
+    #c0c0c0 80%, 
+    #a0a0a0 100%);
+  border-radius: 50%;
+  box-shadow: 
+    0 0 30px rgba(255, 255, 255, 0.3),
+    0 0 60px rgba(255, 255, 255, 0.1),
+    inset -10px -10px 20px rgba(0, 0, 0, 0.2);
+  animation: moon-glow 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* Moon Craters */
+body::after {
+  content: '';
+  position: fixed;
+  top: 70px;
+  right: 70px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle at 25% 25%, 
+    transparent 0%, 
+    rgba(0, 0, 0, 0.1) 20%, 
+    transparent 40%),
+    radial-gradient(circle at 70% 60%, 
+    transparent 0%, 
+    rgba(0, 0, 0, 0.08) 15%, 
+    transparent 30%),
+    radial-gradient(circle at 40% 70%, 
+    transparent 0%, 
+    rgba(0, 0, 0, 0.06) 10%, 
+    transparent 25%);
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Floating Stars */
+.star {
+  position: fixed;
+  width: 2px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+  z-index: 1;
+}
+
+.star:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+.star:nth-child(2) { top: 20%; left: 80%; animation-delay: 0.5s; }
+.star:nth-child(3) { top: 30%; left: 20%; animation-delay: 1s; }
+.star:nth-child(4) { top: 40%; left: 70%; animation-delay: 1.5s; }
+.star:nth-child(5) { top: 50%; left: 15%; animation-delay: 2s; }
+.star:nth-child(6) { top: 60%; left: 85%; animation-delay: 2.5s; }
+.star:nth-child(7) { top: 70%; left: 25%; animation-delay: 3s; }
+.star:nth-child(8) { top: 80%; left: 75%; animation-delay: 3.5s; }
+.star:nth-child(9) { top: 90%; left: 35%; animation-delay: 4s; }
+.star:nth-child(10) { top: 15%; left: 60%; animation-delay: 4.5s; }
+
+/* Shooting Stars */
+.shooting-star {
+  position: fixed;
+  width: 100px;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    #ffffff 50%, 
+    transparent 100%);
+  animation: shooting-star 8s linear infinite;
+  z-index: 1;
+}
+
+.shooting-star:nth-child(1) { 
+  top: 20%; 
+  left: -100px; 
+  animation-delay: 0s; 
+  transform: rotate(-45deg);
+}
+.shooting-star:nth-child(2) { 
+  top: 60%; 
+  left: -100px; 
+  animation-delay: 4s; 
+  transform: rotate(-30deg);
+}
+
+/* Floating Clouds */
+.cloud {
+  position: fixed;
+  width: 80px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  animation: float-cloud 20s linear infinite;
+  z-index: 1;
+}
+
+.cloud:nth-child(1) { 
+  top: 15%; 
+  left: -80px; 
+  animation-delay: 0s; 
+}
+.cloud:nth-child(2) { 
+  top: 45%; 
+  left: -80px; 
+  animation-delay: 10s; 
+}
+
+/* Moon Animation */
+@keyframes moon-glow {
+  0%, 100% { 
+    box-shadow: 
+      0 0 30px rgba(255, 255, 255, 0.3),
+      0 0 60px rgba(255, 255, 255, 0.1),
+      inset -10px -10px 20px rgba(0, 0, 0, 0.2);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 
+      0 0 40px rgba(255, 255, 255, 0.4),
+      0 0 80px rgba(255, 255, 255, 0.2),
+      inset -10px -10px 20px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05);
+  }
+}
+
+/* Star Twinkle Animation */
+@keyframes twinkle {
+  0%, 100% { 
+    opacity: 0.3; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.2);
+  }
+}
+
+/* Shooting Star Animation */
+@keyframes shooting-star {
+  0% { 
+    transform: translateX(-100px) rotate(-45deg);
+    opacity: 0;
+  }
+  10% { 
+    opacity: 1;
+  }
+  90% { 
+    opacity: 1;
+  }
+  100% { 
+    transform: translateX(calc(100vw + 100px)) rotate(-45deg);
+    opacity: 0;
+  }
+}
+
+/* Cloud Float Animation */
+@keyframes float-cloud {
+  0% { 
+    transform: translateX(-80px);
+    opacity: 0;
+  }
+  10% { 
+    opacity: 0.3;
+  }
+  90% { 
+    opacity: 0.3;
+  }
+  100% { 
+    transform: translateX(calc(100vw + 80px));
+    opacity: 0;
+  }
+}
+
+/* Custom Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(0, 245, 255, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation Classes */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.6s ease-out forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.8s ease-out forwards;
+}
+
+/* Glassmorphism Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Tetris Block Styles */
+.tetris-cell {
+  transition: all 0.15s ease-in-out;
+  position: relative;
+}
+
+.tetris-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #00f5ff 0%, #8000ff 50%, #ff0000 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Button Hover Effects */
+.btn-hover {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-hover:hover::before {
+  left: 100%;
+}
+
+/* Focus Styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-gray-900;
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #00f5ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mobile-stack {
+    flex-direction: column;
+  }
+  
+  .mobile-full {
+    width: 100%;
+  }
+  
+  /* Adjust moon size for mobile */
+  body::before {
+    width: 80px;
+    height: 80px;
+    top: 30px;
+    right: 30px;
+  }
+  
+  body::after {
+    width: 60px;
+    height: 60px;
+    top: 45px;
+    right: 45px;
+  }
+}
+
+/* High Score Highlight */
+.high-score {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Game Board Border Glow */
+.board-glow {
+  box-shadow: 
+    0 0 20px rgba(0, 245, 255, 0.2),
+    inset 0 0 20px rgba(0, 245, 255, 0.1);
+}
+
+/* Particle Effect */
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #00f5ff;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: particle-fade 1s ease-out forwards;
+}
+
+@keyframes particle-fade {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* Menu Button Stagger Animation */
+.menu-button {
+  opacity: 0;
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.menu-button:nth-child(1) { animation-delay: 0ms; }
+.menu-button:nth-child(2) { animation-delay: 100ms; }
+.menu-button:nth-child(3) { animation-delay: 200ms; }
+.menu-button:nth-child(4) { animation-delay: 300ms; }
+.menu-button:nth-child(5) { animation-delay: 400ms; }
+
+/* Game State Transitions */
+.game-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+.game-transition-enter {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.game-transition-enter-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.game-transition-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.game-transition-exit-active {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+/* Utility Classes */
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
+}
+
+.border-glow {
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+}
+
+/* Accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+} 
