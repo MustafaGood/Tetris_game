@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { Grid, Piece, TETROMINO_COLORS, shape, Cell, GameState } from '../tetris';
+import { Grid, Piece, TETROMINO_COLORS, shape, Cell, GameState, getGhostPiecePosition, shouldShowGhostPiece } from '../tetris';
 
 interface GameBoardProps {
   grid: Grid;
   currentPiece?: Piece;
   cellSize?: number;
   gameState?: GameState;
+  ghostPieceEnabled?: boolean;
 }
 
 // State Overlay komponent för att visa aktuellt state
@@ -46,7 +47,7 @@ const StateOverlay: React.FC<{ gameState: GameState }> = ({ gameState }) => {
   );
 };
 
-const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24, gameState }) => {
+const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24, gameState, ghostPieceEnabled = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boardWidth = grid[0].length;
   const boardHeight = grid.length;
@@ -89,6 +90,25 @@ const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24
     }
   }, [cellSize]);
 
+  // Funktion för att rita ghost piece cell
+  const drawGhostCell = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, pieceId: number) => {
+    const pixelX = x * cellSize;
+    const pixelY = y * cellSize;
+    
+    // Hämta färgen för pjäsen
+    const color = TETROMINO_COLORS[pieceId as keyof typeof TETROMINO_COLORS] || '#666';
+    
+    // Skapa transparent version av färgen (30% opacity)
+    const transparentColor = color + '4D'; // 4D = 30% opacity i hex
+    ctx.fillStyle = transparentColor;
+    ctx.fillRect(pixelX, pixelY, cellSize, cellSize);
+    
+    // Rita outline för ghost piece (ingen 3D-effekt)
+    ctx.strokeStyle = color + '80'; // 80 = 50% opacity i hex
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pixelX, pixelY, cellSize, cellSize);
+  }, [cellSize]);
+
   // Funktion för att rita hela spelplanen
   const drawBoard = useCallback((ctx: CanvasRenderingContext2D) => {
     // Rensa canvas
@@ -105,7 +125,26 @@ const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24
       }
     }
     
-    // Rita nuvarande pjäs om den finns
+    // Beräkna och rita ghost piece först (under den aktiva pjäsen)
+    if (currentPiece && gameState === GameState.PLAYING && ghostPieceEnabled) {
+      const ghostPiece = getGhostPiecePosition(currentPiece, grid);
+      if (shouldShowGhostPiece(currentPiece, ghostPiece, gameState)) {
+        const ghostShape = shape(ghostPiece!);
+        for (let dy = 0; dy < ghostShape.length; dy++) {
+          for (let dx = 0; dx < ghostShape[dy].length; dx++) {
+            if (ghostShape[dy][dx]) {
+              const x = ghostPiece!.x + dx;
+              const y = ghostPiece!.y + dy;
+              if (y >= 0 && y < boardHeight && x >= 0 && x < boardWidth) {
+                drawGhostCell(ctx, x, y, ghostPiece!.id);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Rita nuvarande pjäs om den finns (ovanpå ghost piece)
     if (currentPiece) {
       const pieceShape = shape(currentPiece);
       for (let dy = 0; dy < pieceShape.length; dy++) {
@@ -125,7 +164,7 @@ const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24
     ctx.strokeStyle = '#4a4a4a';
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, canvasWidth, canvasHeight);
-  }, [grid, currentPiece, boardWidth, boardHeight, canvasWidth, canvasHeight, drawCell]);
+  }, [grid, currentPiece, gameState, ghostPieceEnabled, boardWidth, boardHeight, canvasWidth, canvasHeight, drawCell, drawGhostCell]);
 
   // Effekt för att rita om när props ändras
   useEffect(() => {

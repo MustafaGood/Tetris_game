@@ -512,3 +512,36 @@ export function transitionState(
   }
   return null;
 } 
+
+// Beräknar ghost piece position (spökskuggan som visar var pjäsen kommer landa)
+export function getGhostPiecePosition(currentPiece: Piece, grid: Grid): Piece | null {
+  if (!currentPiece) return null;
+  
+  // Kopiera nuvarande pjäs
+  const ghostPiece = clone(currentPiece);
+  
+  // Flyttar nedåt stegvis tills kollision upptäcks
+  while (!collide(grid, ghostPiece)) {
+    ghostPiece.y++;
+  }
+  
+  // Flyttar ett steg upp för sista giltiga positionen
+  ghostPiece.y--;
+  
+  // Kontrollera att ghost piece inte är samma som current piece
+  if (ghostPiece.y === currentPiece.y) {
+    return null; // Ingen ghost piece behövs om pjäsen redan är på botten
+  }
+  
+  return ghostPiece;
+}
+
+// Kontrollerar om ghost piece ska visas
+export function shouldShowGhostPiece(currentPiece: Piece, ghostPiece: Piece | null, gameState: GameState): boolean {
+  return gameState === GameState.PLAYING && 
+         currentPiece !== null && 
+         ghostPiece !== null && 
+         ghostPiece.y !== currentPiece.y;
+} 
+
+ 

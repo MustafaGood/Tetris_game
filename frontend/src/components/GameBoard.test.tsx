@@ -1,5 +1,35 @@
 import { describe, test, expect, vi } from 'vitest';
 import { GameState, canTransition, isInputAllowed, validateStateTransition } from '../tetris';
+import { render, screen } from '@testing-library/react';
+import GameBoard from './GameBoard';
+import { emptyGrid, spawn, Bag, GameState } from '../tetris';
+
+// Mock canvas context
+const mockContext = {
+  clearRect: vi.fn(),
+  fillRect: vi.fn(),
+  strokeRect: vi.fn(),
+  fillStyle: '',
+  strokeStyle: '',
+  lineWidth: 0,
+  imageSmoothingEnabled: false,
+  imageSmoothingQuality: 'low' as CanvasImageSmoothingQuality,
+};
+
+const mockCanvas = {
+  getContext: vi.fn(() => mockContext),
+  width: 0,
+  height: 0,
+};
+
+// Mock canvas element
+Object.defineProperty(global, 'HTMLCanvasElement', {
+  value: class {
+    getContext() {
+      return mockContext;
+    }
+  },
+});
 
 // Test för GameState enum och transitions
 describe('GameState Management', () => {
@@ -101,5 +131,99 @@ describe('State Transition Callbacks', () => {
     }
     
     expect(mockCallback).not.toHaveBeenCalled();
+  });
+});
+
+describe('GameBoard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders without crashing', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} />);
+    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+  });
+
+  it('renders with current piece', () => {
+    const grid = emptyGrid();
+    const bag = new Bag();
+    const piece = spawn(bag);
+    render(<GameBoard grid={grid} currentPiece={piece} />);
+    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+  });
+
+  it('renders with custom cell size', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} cellSize={32} />);
+    const canvas = screen.getByRole('img', { hidden: true });
+    expect(canvas).toBeInTheDocument();
+  });
+
+  it('renders with game state overlay', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} gameState={GameState.PAUSE} />);
+    expect(screen.getByText('PAUSAT')).toBeInTheDocument();
+  });
+
+  it('renders start state overlay', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} gameState={GameState.START} />);
+    expect(screen.getByText('Tryck Start för att börja')).toBeInTheDocument();
+  });
+
+  it('renders game over state overlay', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} gameState={GameState.GAME_OVER} />);
+    expect(screen.getByText('GAME OVER')).toBeInTheDocument();
+  });
+
+  it('does not render overlay in playing state', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} gameState={GameState.PLAYING} />);
+    expect(screen.queryByText('PAUSAT')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tryck Start för att börja')).not.toBeInTheDocument();
+    expect(screen.queryByText('GAME OVER')).not.toBeInTheDocument();
+  });
+});
+
+// Ghost Piece Tests
+describe('Ghost Piece Functionality', () => {
+  it('should render ghost piece when piece is not at bottom', () => {
+    const grid = emptyGrid();
+    const bag = new Bag();
+    const piece = spawn(bag);
+    // Move piece down a bit but not to bottom
+    piece.y = 5;
+    
+    render(<GameBoard grid={grid} currentPiece={piece} gameState={GameState.PLAYING} />);
+    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+  });
+
+  it('should not render ghost piece when piece is at bottom', () => {
+    const grid = emptyGrid();
+    const bag = new Bag();
+    const piece = spawn(bag);
+    // Move piece to bottom
+    piece.y = 18; // Near bottom
+    
+    render(<GameBoard grid={grid} currentPiece={piece} gameState={GameState.PLAYING} />);
+    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+  });
+
+  it('should not render ghost piece in non-playing states', () => {
+    const grid = emptyGrid();
+    const bag = new Bag();
+    const piece = spawn(bag);
+    piece.y = 5;
+    
+    render(<GameBoard grid={grid} currentPiece={piece} gameState={GameState.PAUSE} />);
+    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+  });
+
+  it('should not render ghost piece without current piece', () => {
+    const grid = emptyGrid();
+    render(<GameBoard grid={grid} gameState={GameState.PLAYING} />);
+    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
   });
 });

@@ -140,6 +140,9 @@ export default function App() {
   const [lastTetris, setLastTetris] = useState(false); // För Back-to-Back
   const [lineClearAnimation, setLineClearAnimation] = useState<number[]>([]);
   
+  // Ghost piece setting
+  const [ghostPieceEnabled, setGhostPieceEnabled] = useState(true);
+  
   // Throttle-hook för tangentbordskontroller
   const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
 
@@ -591,7 +594,7 @@ export default function App() {
             <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center">
               {/* Spelplan */}
               <div className="flex-shrink-0">
-                <GameBoard grid={board} currentPiece={cur} gameState={gameState} />
+                <GameBoard grid={board} currentPiece={cur} gameState={gameState} ghostPieceEnabled={ghostPieceEnabled} />
                 
                 {/* Paus-overlay */}
                 {gameState === GameState.PAUSE && (
@@ -623,6 +626,8 @@ export default function App() {
                 points={points} 
                 scores={scores}
                 backendConnected={backendConnected}
+                ghostPieceEnabled={ghostPieceEnabled}
+                onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
                 onQuit={() => {
                   setState(GameState.START);
                   setUiState('menu');

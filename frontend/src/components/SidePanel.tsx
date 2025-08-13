@@ -11,6 +11,8 @@ interface SidePanelProps {
   scores: Score[];
   backendConnected: boolean | null;
   onQuit?: () => void;
+  ghostPieceEnabled?: boolean;
+  onToggleGhostPiece?: () => void;
 }
 
 const SidePanel: React.FC<SidePanelProps> = ({ 
@@ -21,7 +23,9 @@ const SidePanel: React.FC<SidePanelProps> = ({
   points, 
   scores, 
   backendConnected,
-  onQuit 
+  onQuit,
+  ghostPieceEnabled = true,
+  onToggleGhostPiece
 }) => {
   return (
     <div className="flex flex-col gap-6 w-64">
@@ -66,6 +70,31 @@ const SidePanel: React.FC<SidePanelProps> = ({
           <div className="flex justify-between">
             <span className="text-gray-300">Score:</span>
             <span className="text-white font-bold">{points.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="bg-gray-800 p-4 rounded-xl border border-gray-600">
+        <h3 className="text-white font-bold text-lg mb-3 text-center">Settings</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-300 text-sm">Ghost Piece</span>
+            <button
+              onClick={onToggleGhostPiece}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                ghostPieceEnabled ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  ghostPieceEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="text-gray-400 text-xs text-center">
+            Visar var pjäsen kommer landa
           </div>
         </div>
       </div>
