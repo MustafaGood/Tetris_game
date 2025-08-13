@@ -4,9 +4,15 @@ interface SettingsProps {
   ghostPieceEnabled: boolean;
   soundEnabled: boolean;
   startLevel: number;
+  musicEnabled: boolean;
+  soundEffectsEnabled: boolean;
+  theme: 'light' | 'dark';
   onToggleGhostPiece: () => void;
   onToggleSound: () => void;
+  onToggleMusic: () => void;
+  onToggleSoundEffects: () => void;
   onStartLevelChange: (level: number) => void;
+  onThemeChange: (theme: 'light' | 'dark') => void;
   onBack: () => void;
 }
 
@@ -14,9 +20,15 @@ const Settings: React.FC<SettingsProps> = ({
   ghostPieceEnabled,
   soundEnabled,
   startLevel,
+  musicEnabled,
+  soundEffectsEnabled,
+  theme,
   onToggleGhostPiece,
   onToggleSound,
+  onToggleMusic,
+  onToggleSoundEffects,
   onStartLevelChange,
+  onThemeChange,
   onBack
 }) => {
   return (
@@ -45,11 +57,11 @@ const Settings: React.FC<SettingsProps> = ({
             </button>
           </div>
 
-          {/* Sound Setting */}
+          {/* Master Sound Setting */}
           <div className="flex items-center justify-between">
             <div className="text-left">
               <span className="text-white font-semibold">Ljud</span>
-              <p className="text-gray-400 text-sm">Aktivera ljudeffekter</p>
+              <p className="text-gray-400 text-sm">Aktivera alla ljud</p>
             </div>
             <button
               onClick={onToggleSound}
@@ -62,6 +74,64 @@ const Settings: React.FC<SettingsProps> = ({
                   soundEnabled ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
+            </button>
+          </div>
+
+          {/* Music Setting */}
+          <div className="flex items-center justify-between">
+            <div className="text-left">
+              <span className="text-white font-semibold">Bakgrundsmusik</span>
+              <p className="text-gray-400 text-sm">Spela bakgrundsmusik</p>
+            </div>
+            <button
+              onClick={onToggleMusic}
+              disabled={!soundEnabled}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                !soundEnabled ? 'bg-gray-500 cursor-not-allowed' :
+                musicEnabled ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  musicEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Sound Effects Setting */}
+          <div className="flex items-center justify-between">
+            <div className="text-left">
+              <span className="text-white font-semibold">Ljudeffekter</span>
+              <p className="text-gray-400 text-sm">Spela ljudeffekter</p>
+            </div>
+            <button
+              onClick={onToggleSoundEffects}
+              disabled={!soundEnabled}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                !soundEnabled ? 'bg-gray-500 cursor-not-allowed' :
+                soundEffectsEnabled ? 'bg-purple-500' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  soundEffectsEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Theme Setting */}
+          <div className="flex items-center justify-between">
+            <div className="text-left">
+              <span className="text-white font-semibold">Tema</span>
+              <p className="text-gray-400 text-sm">Välj ljust eller mörkt tema</p>
+            </div>
+            <button
+              onClick={() => onThemeChange(theme === 'light' ? 'dark' : 'light')}
+              className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              {theme === 'light' ? '☀️ Ljust' : '🌙 Mörkt'}
             </button>
           </div>
 
@@ -100,12 +170,14 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
 
         {/* Back Button */}
-        <button
-          onClick={onBack}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors mt-8"
-        >
-          Tillbaka
-        </button>
+        <div className="mt-8">
+          <button
+            onClick={onBack}
+            className="bg-gray-600 hover:bg-gray-500 text-white px-6 py-3 rounded-lg transition-colors font-semibold"
+          >
+            Tillbaka
+          </button>
+        </div>
       </div>
     </div>
   );

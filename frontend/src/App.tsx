@@ -45,7 +45,9 @@ import MainMenu from './components/MainMenu';
 import Settings from './components/Settings';
 import Help from './components/Help';
 import AnimatedBackground from './components/AnimatedBackground';
+import ParticleEffect from './components/ParticleEffect';
 import { useSound } from './hooks/useSound';
+import { useTheme } from './contexts/ThemeContext';
 
 // UI States för olika skärmar (separat från GameState)
 type UIState = 'menu' | 'help' | 'info' | 'highscores' | 'settings';
@@ -161,11 +163,29 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [startLevel, setStartLevel] = useState(1);
   
+  // Theme
+  const { theme, setTheme } = useTheme();
+  
+  // Particle effects
+  const [particleEffect, setParticleEffect] = useState<{
+    isActive: boolean;
+    position: { x: number; y: number };
+  }>({ isActive: false, position: { x: 0, y: 0 } });
+  
   // Throttle-hook för tangentbordskontroller
   const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
   
   // Ljud-hook
   const sounds = useSound(soundEnabled);
+
+  // Initialize audio when user interacts
+  const initializeAudio = useCallback(async () => {
+    try {
+      await sounds.resumeAudioContext();
+    } catch (error) {
+      console.warn('Failed to initialize audio:', error);
+    }
+  }, [sounds]);
 
   // Fyller "next" med 5 block vid start
   useEffect(() => {
@@ -190,14 +210,14 @@ export default function App() {
 
   // Laddar highscores när man går till highscores-sidan
   useEffect(() => { 
-    if (gameState === 'highscores') {
+    if (uiState === 'highscores') {
       if (backendConnected) {
         fetchScores(100).then(setScores).catch(() => {});
       }
       // Ladda lokala highscores
       setLocalScores(getLocalScores());
     }
-  }, [gameState, backendConnected]);
+  }, [uiState, backendConnected]);
 
   // Skapar ett nytt block
   const newPiece = useCallback((fromHold?: number) => {
@@ -368,6 +388,12 @@ export default function App() {
         setPoints(prev => prev + scoreGain);
         setLastTetris(isTetrisClear || isTSpinClear);
         
+        // Trigger particle effect
+        setParticleEffect({
+          isActive: true,
+          position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 }
+        });
+        
         // Sluta animation
         setLineClearAnimation([]);
         setIsClearingLines(false);
@@ -415,8 +441,26 @@ export default function App() {
     setCanHold(false);
   }, [hold, cur, canHold, over, paused, newPiece]);
 
+  // Sound control functions
+  const handleToggleMusic = useCallback(() => {
+    sounds.toggleMusic();
+  }, [sounds]);
+
+  const handleToggleSoundEffects = useCallback(() => {
+    sounds.toggleSoundEffects();
+  }, [sounds]);
+
+  const handleThemeChange = useCallback((newTheme: 'light' | 'dark') => {
+    setTheme(newTheme);
+  }, [setTheme]);
+
   // Återställ spelet
   const reset = useCallback(() => {
+    // Stop background music when resetting
+    if (sounds.isMusicPlaying) {
+      sounds.stopBackgroundMusic();
+    }
+    
     setBoard(emptyGrid());
     setCur(spawn(bag));
     setHold(null);
@@ -438,7 +482,7 @@ export default function App() {
     }
     bag.reset();
     setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
-  }, [bag, lockDelayTimer, startLevel]);
+  }, [bag, lockDelayTimer, startLevel, sounds]);
 
   // State transition funktion med validering
   const setState = useCallback((newState: GameState) => {
@@ -465,6 +509,10 @@ export default function App() {
         case GameState.GAME_OVER:
           setOver(true);
           setPaused(false);
+          // Stop background music when game over
+          if (sounds.isMusicPlaying) {
+            sounds.stopBackgroundMusic();
+          }
           // Spara till LocalStorage om det är en highscore
           if (isLocalHighscore(points)) {
             saveLocalScore({
@@ -484,6 +532,10 @@ export default function App() {
         case GameState.START:
           setPaused(false);
           setOver(false);
+          // Stop background music when going to start
+          if (sounds.isMusicPlaying) {
+            sounds.stopBackgroundMusic();
+          }
           // Nollställ alla timers
           if (lockDelayTimer) {
             clearTimeout(lockDelayTimer);
@@ -496,21 +548,37 @@ export default function App() {
     if (validTransition) {
       setGameState(validTransition);
     }
-  }, [gameState, reset, lockDelayTimer]);
+  }, [gameState, reset, lockDelayTimer, sounds, saveLocalScore, points]);
 
   // Starta spel
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
+    // Initialize audio when starting game
+    await initializeAudio();
+    
+    // Start background music when game starts
+    if (sounds.musicEnabled) {
+      sounds.playBackgroundMusic();
+    }
+    
     setState(GameState.PLAYING);
-  }, [setState]);
+  }, [setState, initializeAudio, sounds]);
 
   // Pausa spel
   const pauseGame = useCallback(() => {
     if (gameState === GameState.PLAYING) {
+      // Pause background music when pausing game
+      if (sounds.isMusicPlaying) {
+        sounds.stopBackgroundMusic();
+      }
       setState(GameState.PAUSE);
     } else if (gameState === GameState.PAUSE) {
+      // Resume background music when resuming game
+      if (sounds.musicEnabled) {
+        sounds.playBackgroundMusic();
+      }
       setState(GameState.PLAYING);
     }
-  }, [gameState, setState]);
+  }, [gameState, setState, sounds]);
 
 
 
@@ -553,6 +621,7 @@ export default function App() {
       }
       
       setKeyPressed(e.code, true);
+      initializeAudio(); // Initialize audio on key down
       
       if (shouldProcessKey(e.code)) {
         switch (e.code) {
@@ -628,7 +697,7 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [gameState, move, softDrop, rotateCur, hardDrop, holdPiece, pauseGame, reset, setKeyPressed, shouldProcessKey]);
+  }, [gameState, move, softDrop, rotateCur, hardDrop, holdPiece, pauseGame, reset, setKeyPressed, shouldProcessKey, initializeAudio]);
 
   // Spelloop med requestAnimationFrame
   useGameLoop(() => {
@@ -644,9 +713,22 @@ export default function App() {
         <AnimatedBackground />
         <MainMenu
           onStart={startGame}
-          onHelp={() => setUiState('help')}
-          onInfo={() => setUiState('info')}
-          onHighscores={() => setUiState('highscores')}
+          onHelp={async () => {
+            await initializeAudio();
+            setUiState('help');
+          }}
+          onInfo={async () => {
+            await initializeAudio();
+            setUiState('info');
+          }}
+          onHighscores={async () => {
+            await initializeAudio();
+            setUiState('highscores');
+          }}
+          onSettings={async () => {
+            await initializeAudio();
+            setUiState('settings');
+          }}
           onExit={() => {
             if (confirm('Är du säker på att du vill avsluta spelet?')) {
               // Visa instruktioner för att stänga fönstret
@@ -665,8 +747,15 @@ export default function App() {
           <div className="min-h-screen p-4 relative z-10">
             <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center game-container">
               {/* Spelplan */}
-              <div className="flex-shrink-0 game-board-container">
+              <div className="flex-shrink-0 game-board-container relative">
                 <GameBoard grid={board} currentPiece={cur} gameState={gameState} ghostPieceEnabled={ghostPieceEnabled} />
+                
+                {/* Particle Effect */}
+                <ParticleEffect
+                  isActive={particleEffect.isActive}
+                  position={particleEffect.position}
+                  onComplete={() => setParticleEffect({ isActive: false, position: { x: 0, y: 0 } })}
+                />
                 
                 {/* Paus-overlay */}
                 {gameState === GameState.PAUSE && (
@@ -675,8 +764,9 @@ export default function App() {
                       <h2 className="text-2xl font-bold text-white mb-4">Pausat</h2>
                       <p className="text-gray-300 mb-4">Tryck P eller Esc för att fortsätta</p>
                                              <button 
-                         onClick={() => {
+                         onClick={async () => {
                            // Först gå till START state, sedan till meny
+                           await initializeAudio();
                            setState(GameState.START);
                            setUiState('menu');
                          }}
@@ -703,7 +793,8 @@ export default function App() {
                 backendConnected={backendConnected}
                 ghostPieceEnabled={ghostPieceEnabled}
                 onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
-                                  onQuit={() => {
+                                  onQuit={async () => {
+                    await initializeAudio();
                     setState(GameState.START);
                     setUiState('menu');
                   }}
@@ -740,7 +831,10 @@ export default function App() {
 
             {backendConnected && !showNameInput && (
     <button
-                onClick={() => setShowNameInput(true)}
+                onClick={async () => {
+                  await initializeAudio();
+                  setShowNameInput(true);
+                }}
                 className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold transition-colors mb-4"
               >
                 Spara Poäng
@@ -760,6 +854,7 @@ export default function App() {
                 />
           <button
                   onClick={async () => {
+                    await initializeAudio();
                     if (playerName.trim()) {
                       const success = await saveScore(playerName);
                       if (success) {
@@ -777,13 +872,17 @@ export default function App() {
 
             <div className="space-y-2">
               <button
-                onClick={startGame}
+                onClick={async () => {
+                  await initializeAudio();
+                  startGame();
+                }}
                 className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
               >
                 Spela Igen
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  await initializeAudio();
                   setState(GameState.START);
                   setUiState('menu');
                 }}
@@ -872,7 +971,10 @@ export default function App() {
               </div>
 
           <button
-            onClick={() => setUiState('menu')}
+            onClick={async () => {
+              await initializeAudio();
+              setUiState('menu');
+            }}
             className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
           >
             Tillbaka
@@ -888,7 +990,10 @@ export default function App() {
       return (
         <>
           <AnimatedBackground />
-          <Help onBack={() => setUiState('menu')} />
+          <Help onBack={async () => {
+            await initializeAudio();
+            setUiState('menu');
+          }} />
         </>
       );
     }
@@ -901,10 +1006,19 @@ export default function App() {
             ghostPieceEnabled={ghostPieceEnabled}
             soundEnabled={soundEnabled}
             startLevel={startLevel}
+            musicEnabled={sounds.musicEnabled}
+            soundEffectsEnabled={sounds.soundEffectsEnabled}
+            theme={theme}
             onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
             onToggleSound={() => setSoundEnabled(!soundEnabled)}
+            onToggleMusic={handleToggleMusic}
+            onToggleSoundEffects={handleToggleSoundEffects}
             onStartLevelChange={setStartLevel}
-            onBack={() => setUiState('menu')}
+            onThemeChange={handleThemeChange}
+            onBack={async () => {
+              await initializeAudio();
+              setUiState('menu');
+            }}
           />
         </>
       );
@@ -972,7 +1086,10 @@ export default function App() {
       </div>
 
                 <button
-                  onClick={() => setUiState('menu')}
+                  onClick={async () => {
+                    await initializeAudio();
+                    setUiState('menu');
+                  }}
                   className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
                 >
                   Tillbaka
@@ -990,10 +1107,22 @@ export default function App() {
         <AnimatedBackground />
         <MainMenu
           onStart={startGame}
-          onHelp={() => setUiState('help')}
-          onInfo={() => setUiState('info')}
-          onHighscores={() => setUiState('highscores')}
-          onSettings={() => setUiState('settings')}
+          onHelp={async () => {
+            await initializeAudio();
+            setUiState('help');
+          }}
+          onInfo={async () => {
+            await initializeAudio();
+            setUiState('info');
+          }}
+          onHighscores={async () => {
+            await initializeAudio();
+            setUiState('highscores');
+          }}
+          onSettings={async () => {
+            await initializeAudio();
+            setUiState('settings');
+          }}
           onExit={() => {
             if (confirm('Är du säker på att du vill avsluta spelet?')) {
               // Visa instruktioner för att stänga fönstret
