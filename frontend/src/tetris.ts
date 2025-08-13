@@ -310,25 +310,100 @@ export function calculateScoreWithB2B(lines: number, level: number, isBackToBack
   return baseScore;
 }
 
+// Beräknar combo-poäng
+export function calculateComboScore(combo: number, level: number): number {
+  if (combo <= 1) return 0;
+  return combo * 50 * level; // 50 poäng per combo-nivå * level
+}
+
+// Beräknar soft drop poäng
+export function calculateSoftDropScore(distance: number, level: number): number {
+  return distance * level; // 1 poäng per rad * level
+}
+
+// Beräknar hard drop poäng
+export function calculateHardDropScore(distance: number, level: number): number {
+  return distance * 2; // 2 poäng per rad (fast)
+}
+
 // Kontrollerar om en line clear är en Tetris (4 rader)
 export function isTetris(lines: number): boolean {
   return lines === 4;
 }
 
-// Kontrollerar om en line clear är en T-Spin (för framtida implementation)
-export function isTSpin(lines: number, pieceId: number, lastMove: string): boolean {
-  // Grundläggande T-Spin detection (kan utökas)
-  return lines > 0 && pieceId === 6 && lastMove === 'rotate';
+// Förbättrad T-Spin detection
+export function isTSpin(lines: number, pieceId: number, lastMove: string, board: Grid, piece: Piece): boolean {
+  // Endast T-pjäser kan göra T-Spin
+  if (pieceId !== 6) return false;
+  
+  // Måste ha gjort en rotation som sista rörelse
+  if (lastMove !== 'rotate') return false;
+  
+  // Kontrollera om pjäsen är i en T-Spin position
+  // Detta är en förenklad version - full T-Spin detection är mer komplex
+  const corners = getPieceCorners(piece, board);
+  const filledCorners = corners.filter(corner => 
+    corner.x >= 0 && corner.x < W && 
+    corner.y >= 0 && corner.y < H && 
+    board[corner.y][corner.x] !== 0
+  ).length;
+  
+  // T-Spin Mini: 2-3 hörn fyllda
+  // T-Spin: 3 hörn fyllda
+  return filledCorners >= 2 && lines > 0;
+}
+
+// Hjälpfunktion för att få hörnen av en pjäs
+function getPieceCorners(piece: Piece, board: Grid): {x: number, y: number}[] {
+  const shape = SHAPES[piece.id][piece.r];
+  const corners: {x: number, y: number}[] = [];
+  
+  // Hitta hörnen av pjäsen
+  for (let y = 0; y < shape.length; y++) {
+    for (let x = 0; x < shape[y].length; x++) {
+      if (shape[y][x] !== 0) {
+        const boardX = piece.x + x;
+        const boardY = piece.y + y;
+        
+        // Kontrollera om detta är ett hörn (har minst en tom cell bredvid)
+        const isCorner = (
+          (boardX > 0 && boardY > 0 && board[boardY-1][boardX-1] === 0) ||
+          (boardX < W-1 && boardY > 0 && board[boardY-1][boardX+1] === 0) ||
+          (boardX > 0 && boardY < H-1 && board[boardY+1][boardX-1] === 0) ||
+          (boardX < W-1 && boardY < H-1 && board[boardY+1][boardX+1] === 0)
+        );
+        
+        if (isCorner) {
+          corners.push({x: boardX, y: boardY});
+        }
+      }
+    }
+  }
+  
+  return corners;
 }
 
 // Beräknar total poäng för en line clear med alla bonusar
-export function calculateTotalScore(lines: number, level: number, isBackToBack: boolean = false, isTSpin: boolean = false): number {
+export function calculateTotalScore(
+  lines: number, 
+  level: number, 
+  isBackToBack: boolean = false, 
+  isTSpin: boolean = false,
+  combo: number = 0
+): number {
   let score = calculateScoreWithB2B(lines, level, isBackToBack);
   
-  // T-Spin bonus (för framtida implementation)
+  // T-Spin bonus
   if (isTSpin) {
-    score = Math.floor(score * 1.5);
+    if (lines === 0) {
+      score = 400 * level; // T-Spin Mini utan line clear
+    } else {
+      score = Math.floor(score * 1.5); // 50% bonus för T-Spin med line clear
+    }
   }
+  
+  // Combo bonus
+  score += calculateComboScore(combo, level);
   
   return score;
 }
@@ -542,6 +617,72 @@ export function shouldShowGhostPiece(currentPiece: Piece, ghostPiece: Piece | nu
          currentPiece !== null && 
          ghostPiece !== null && 
          ghostPiece.y !== currentPiece.y;
+} 
+
+// LocalStorage funktioner för lokala highscores
+export interface LocalScore {
+  id: number;
+  playerName: string;
+  score: number;
+  level: number;
+  lines: number;
+  date: string;
+}
+
+// Spara en ny highscore till LocalStorage
+export function saveLocalScore(score: Omit<LocalScore, 'id'>): void {
+  try {
+    const existingScores = getLocalScores();
+    const newScore: LocalScore = {
+      ...score,
+      id: Date.now() // Använd timestamp som unikt ID
+    };
+    
+    const updatedScores = [...existingScores, newScore]
+      .sort((a, b) => b.score - a.score) // Sortera efter poäng (högst först)
+      .slice(0, 10); // Behåll bara top 10
+    
+    localStorage.setItem('tetris-highscores', JSON.stringify(updatedScores));
+  } catch (error) {
+    console.error('Failed to save local score:', error);
+  }
+}
+
+// Hämta alla lokala highscores
+export function getLocalScores(): LocalScore[] {
+  try {
+    const scores = localStorage.getItem('tetris-highscores');
+    return scores ? JSON.parse(scores) : [];
+  } catch (error) {
+    console.error('Failed to load local scores:', error);
+    return [];
+  }
+}
+
+// Kontrollera om en poäng är en highscore
+export function isLocalHighscore(score: number): boolean {
+  const scores = getLocalScores();
+  return scores.length < 10 || score > scores[scores.length - 1].score;
+}
+
+// Rensa alla lokala highscores
+export function clearLocalScores(): void {
+  try {
+    localStorage.removeItem('tetris-highscores');
+  } catch (error) {
+    console.error('Failed to clear local scores:', error);
+  }
+}
+
+// Ta bort en specifik highscore
+export function deleteLocalScore(id: number): void {
+  try {
+    const scores = getLocalScores();
+    const updatedScores = scores.filter(s => s.id !== id);
+    localStorage.setItem('tetris-highscores', JSON.stringify(updatedScores));
+  } catch (error) {
+    console.error('Failed to delete local score:', error);
+  }
 } 
 
  

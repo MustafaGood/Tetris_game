@@ -17,7 +17,11 @@ import {
   W, 
   calculateScore,
   calculateScoreWithB2B,
+  calculateComboScore,
+  calculateSoftDropScore,
+  calculateHardDropScore,
   isTetris,
+  isTSpin,
   calculateTotalScore,
   isGameOver,
   isLanded,
@@ -28,7 +32,11 @@ import {
   GameState,
   canTransition,
   isInputAllowed,
-  transitionState
+  transitionState,
+  saveLocalScore,
+  getLocalScores,
+  isLocalHighscore,
+  LocalScore
 } from './tetris';
 import { fetchScores, postScore, deleteScore, testConnection, Score, formatDate, formatScore } from './api';
 import GameBoard from './components/GameBoard';
@@ -126,6 +134,7 @@ export default function App() {
   const [over, setOver] = useState(false);
   const [board, setBoard] = useState<Grid>(() => emptyGrid());
   const [scores, setScores] = useState<Score[]>([]);
+  const [localScores, setLocalScores] = useState<LocalScore[]>([]);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
@@ -139,6 +148,10 @@ export default function App() {
   const [isClearingLines, setIsClearingLines] = useState(false);
   const [lastTetris, setLastTetris] = useState(false); // För Back-to-Back
   const [lineClearAnimation, setLineClearAnimation] = useState<number[]>([]);
+  
+  // Combo system
+  const [combo, setCombo] = useState(0);
+  const [lastMove, setLastMove] = useState<string>('');
   
   // Ghost piece setting
   const [ghostPieceEnabled, setGhostPieceEnabled] = useState(true);
@@ -158,15 +171,23 @@ export default function App() {
 
   // Laddar leaderboard när spelet är över
   useEffect(() => { 
-    if (over && backendConnected) {
-      fetchScores(10).then(setScores).catch(() => {});
+    if (over) {
+      if (backendConnected) {
+        fetchScores(10).then(setScores).catch(() => {});
+      }
+      // Ladda lokala highscores
+      setLocalScores(getLocalScores());
     }
   }, [over, backendConnected]);
 
   // Laddar highscores när man går till highscores-sidan
   useEffect(() => { 
-    if (gameState === 'highscores' && backendConnected) {
-      fetchScores(100).then(setScores).catch(() => {});
+    if (gameState === 'highscores') {
+      if (backendConnected) {
+        fetchScores(100).then(setScores).catch(() => {});
+      }
+      // Ladda lokala highscores
+      setLocalScores(getLocalScores());
     }
   }, [gameState, backendConnected]);
 
@@ -195,20 +216,24 @@ export default function App() {
       dropDistance++;
     }
     
-    // Lägg till drop-bonus (2 poäng per rad)
+    // Lägg till drop-bonus med korrekt poängberäkning
     if (dropDistance > 0) {
-      setPoints(prev => prev + (dropDistance * 2));
+      const dropScore = calculateHardDropScore(dropDistance, level);
+      setPoints(prev => prev + dropScore);
     }
     
     lockPiece(p);
-  }, [cur, board, over, paused, isClearingLines]);
+  }, [cur, board, over, paused, isClearingLines, level]);
 
-  // Mjuk fall (soft drop) med lock delay
+  // Mjuk fall (soft drop) med lock delay och poäng
   const softDrop = useCallback(() => {
     if (over || paused || isClearingLines) return;
     const p = { ...cur, y: cur.y + 1 };
     if (!collide(board, p)) {
       setCur(p);
+      // Lägg till soft drop poäng
+      const dropScore = calculateSoftDropScore(1, level);
+      setPoints(prev => prev + dropScore);
       // Reset lock delay timer när pjäsen rör sig
       if (lockDelayTimer) {
         clearTimeout(lockDelayTimer);
@@ -227,7 +252,7 @@ export default function App() {
         setIsLocked(true);
       }
     }
-  }, [cur, board, over, paused, isClearingLines, lockDelayTimer, isLocked]);
+  }, [cur, board, over, paused, isClearingLines, lockDelayTimer, isLocked, level]);
 
   // Flytta block med lock delay reset
   const move = useCallback((dx: number) => {
@@ -253,6 +278,7 @@ export default function App() {
     
     if (rotatedPiece) {
       setCur(rotatedPiece);
+      setLastMove('rotate'); // Spara sista rörelse för T-spin detection
       // Reset lock delay timer när pjäsen roteras
       if (lockDelayTimer) {
         clearTimeout(lockDelayTimer);
@@ -297,10 +323,17 @@ export default function App() {
         // Rensa raderna
         clearRows(newBoard, fullRows);
         
-        // Beräkna poäng med Back-to-Back
+        // T-Spin detection
+        const isTSpinClear = isTSpin(fullRows.length, p.id, lastMove, board, p);
+        
+        // Beräkna poäng med alla bonusar
         const isTetrisClear = isTetris(fullRows.length);
-        const isBackToBack = lastTetris && isTetrisClear;
-        const scoreGain = calculateScoreWithB2B(fullRows.length, level, isBackToBack);
+        const isBackToBack = lastTetris && (isTetrisClear || isTSpinClear);
+        const scoreGain = calculateTotalScore(fullRows.length, level, isBackToBack, isTSpinClear, combo);
+        
+        // Uppdatera combo
+        const newCombo = combo + 1;
+        setCombo(newCombo);
         
         // Uppdatera state
         const newLines = lines + fullRows.length;
@@ -309,7 +342,7 @@ export default function App() {
         setLines(newLines);
         setLevel(newLevel);
         setPoints(prev => prev + scoreGain);
-        setLastTetris(isTetrisClear);
+        setLastTetris(isTetrisClear || isTSpinClear);
         
         // Sluta animation
         setLineClearAnimation([]);
@@ -327,7 +360,8 @@ export default function App() {
         newPiece();
       }, 300); // 300ms animation
     } else {
-      // Inga rader att rensa, fortsätt direkt
+      // Inga rader att rensa - reset combo
+      setCombo(0);
       setBoard(newBoard);
       
       // Kontrollera game over
@@ -338,7 +372,7 @@ export default function App() {
       
       newPiece();
     }
-  }, [board, lines, level, lastTetris, newPiece]);
+  }, [board, lines, level, lastTetris, combo, lastMove, newPiece]);
 
   // Håll-funktion
   const holdPiece = useCallback(() => {
@@ -370,6 +404,8 @@ export default function App() {
     setIsClearingLines(false);
     setLastTetris(false);
     setLineClearAnimation([]);
+    setCombo(0);
+    setLastMove('');
     if (lockDelayTimer) {
       clearTimeout(lockDelayTimer);
       setLockDelayTimer(null);
@@ -403,6 +439,16 @@ export default function App() {
         case GameState.GAME_OVER:
           setOver(true);
           setPaused(false);
+          // Spara till LocalStorage om det är en highscore
+          if (isLocalHighscore(points)) {
+            saveLocalScore({
+              playerName: playerName || 'Anonym',
+              score: points,
+              level,
+              lines,
+              date: new Date().toISOString()
+            });
+          }
           // Stoppa alla timers
           if (lockDelayTimer) {
             clearTimeout(lockDelayTimer);
@@ -624,7 +670,9 @@ export default function App() {
                 level={level} 
                 lines={lines} 
                 points={points} 
+                combo={combo}
                 scores={scores}
+                localScores={localScores}
                 backendConnected={backendConnected}
                 ghostPieceEnabled={ghostPieceEnabled}
                 onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
@@ -731,37 +779,69 @@ export default function App() {
               <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
               <h2 className="text-3xl font-bold text-white mb-6 text-center">🏆 Highscores</h2>
               
-              {scores.length > 0 ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-            {scores.map((score, index) => (
-                    <div key={score.id} className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <span className="text-gray-400 w-8">#{index + 1}</span>
-                        <span className="text-white font-bold">{score.name}</span>
+              {/* Backend Highscores */}
+              {backendConnected && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">🌐 Online Highscores</h3>
+                  {scores.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {scores.map((score, index) => (
+                        <div key={score.id} className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <span className="text-gray-400 w-8">#{index + 1}</span>
+                            <span className="text-white font-bold">{score.name}</span>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <div className="text-white font-bold">{formatScore(score.points)}</div>
+                              <div className="text-gray-400 text-sm">Nivå {score.level} • {score.lines} rader</div>
+                            </div>
+                            <div className="text-gray-500 text-sm">{formatDate(score.createdAt)}</div>
+                            <button
+                              onClick={() => handleDeleteScore(score.id)}
+                              className="text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <div className="text-white font-bold">{formatScore(score.points)}</div>
-                          <div className="text-gray-400 text-sm">Nivå {score.level} • {score.lines} rader</div>
-                      </div>
-                        <div className="text-gray-500 text-sm">{formatDate(score.createdAt)}</div>
-                        {backendConnected && (
-                    <button
-                            onClick={() => handleDeleteScore(score.id)}
-                            className="text-red-400 hover:text-red-300 transition-colors"
-                          >
-                            🗑️
-                    </button>
-                        )}
+                  ) : (
+                    <div className="text-center text-gray-400 py-4">
+                      Inga online highscores ännu
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Local Highscores */}
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-white mb-4">💾 Lokala Highscores</h3>
+                {localScores.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {localScores.map((score, index) => (
+                      <div key={score.id} className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <span className="text-gray-400 w-8">#{index + 1}</span>
+                          <span className="text-white font-bold">{score.playerName}</span>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <div className="text-white font-bold">{formatScore(score.score)}</div>
+                            <div className="text-gray-400 text-sm">Nivå {score.level} • {score.lines} rader</div>
+                          </div>
+                          <div className="text-gray-500 text-sm">{new Date(score.date).toLocaleDateString('sv-SE')}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-400 py-4">
+                    Inga lokala highscores ännu
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-              ) : (
-                <div className="text-center text-gray-400 py-8">
-                  {backendConnected ? 'Inga highscores ännu' : 'Kan inte ansluta till servern'}
-          </div>
-        )}
 
           <button
             onClick={() => setUiState('menu')}
@@ -818,11 +898,27 @@ export default function App() {
                       <span className="text-gray-300">4 rader:</span>
                       <span className="text-white">1200 × nivå</span>
               </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Combo:</span>
+                      <span className="text-white">50 × nivå × combo</span>
+            </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">T-Spin:</span>
+                      <span className="text-white">50% bonus</span>
+          </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Back-to-Back:</span>
+                      <span className="text-white">50% bonus</span>
+        </div>
           </div>
                   
                   <div className="mt-6 p-4 bg-gray-700 rounded-lg">
                     <p className="text-gray-300 text-sm">
                       Ny nivå var 10:e rad. Spelet går snabbare på högre nivåer!
+                      <br />
+                      Combo ökar för varje rad som rensas i rad.
+                      <br />
+                      T-Spin och Back-to-Back ger extra poäng!
                     </p>
       </div>
                 </div>

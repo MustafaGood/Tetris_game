@@ -1,6 +1,7 @@
 import React from 'react';
 import MiniPreview from '../MiniPreview';
 import { Score } from '../api';
+import { LocalScore } from '../tetris';
 
 interface SidePanelProps {
   next: number[];
@@ -8,7 +9,9 @@ interface SidePanelProps {
   level: number;
   lines: number;
   points: number;
+  combo: number;
   scores: Score[];
+  localScores: LocalScore[];
   backendConnected: boolean | null;
   onQuit?: () => void;
   ghostPieceEnabled?: boolean;
@@ -21,7 +24,9 @@ const SidePanel: React.FC<SidePanelProps> = ({
   level, 
   lines, 
   points, 
+  combo,
   scores, 
+  localScores,
   backendConnected,
   onQuit,
   ghostPieceEnabled = true,
@@ -71,6 +76,12 @@ const SidePanel: React.FC<SidePanelProps> = ({
             <span className="text-gray-300">Score:</span>
             <span className="text-white font-bold">{points.toLocaleString()}</span>
           </div>
+          {combo > 0 && (
+            <div className="flex justify-between">
+              <span className="text-orange-300">Combo:</span>
+              <span className="text-orange-300 font-bold">{combo}x</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -136,17 +147,28 @@ const SidePanel: React.FC<SidePanelProps> = ({
       </div>
 
       {/* Top Scores */}
-      {scores.length > 0 && (
+      {(scores.length > 0 || localScores.length > 0) && (
         <div className="bg-gray-800 p-4 rounded-xl border border-gray-600">
           <h3 className="text-white font-bold text-lg mb-3 text-center">Top Scores</h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {scores.slice(0, 5).map((score, index) => (
-              <div key={score.id} className="flex justify-between items-center text-sm">
+            {/* Backend scores */}
+            {scores.slice(0, 3).map((score, index) => (
+              <div key={`backend-${score.id}`} className="flex justify-between items-center text-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400 w-4">#{index + 1}</span>
                   <span className="text-white truncate max-w-20">{score.name}</span>
                 </div>
                 <span className="text-white font-bold">{score.points.toLocaleString()}</span>
+              </div>
+            ))}
+            {/* Local scores */}
+            {localScores.slice(0, 3).map((score, index) => (
+              <div key={`local-${score.id}`} className="flex justify-between items-center text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 w-4">#{index + 1}</span>
+                  <span className="text-gray-300 truncate max-w-20">{score.playerName}</span>
+                </div>
+                <span className="text-gray-300 font-bold">{score.score.toLocaleString()}</span>
               </div>
             ))}
           </div>
