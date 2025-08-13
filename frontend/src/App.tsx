@@ -24,7 +24,11 @@ import {
   canMoveLeft,
   canMoveRight,
   canMoveDown,
-  validateGrid
+  validateGrid,
+  GameState,
+  canTransition,
+  isInputAllowed,
+  transitionState
 } from './tetris';
 import { fetchScores, postScore, deleteScore, testConnection, Score, formatDate, formatScore } from './api';
 import GameBoard from './components/GameBoard';
@@ -32,8 +36,8 @@ import SidePanel from './components/SidePanel';
 import MainMenu from './components/MainMenu';
 import AnimatedBackground from './components/AnimatedBackground';
 
-// Möjliga spel-lägen
-type GameState = 'menu' | 'playing' | 'paused' | 'gameOver' | 'help' | 'info' | 'highscores';
+// UI States för olika skärmar (separat från GameState)
+type UIState = 'menu' | 'help' | 'info' | 'highscores';
 
 // Custom hook för requestAnimationFrame med kontrollerad hastighet
 function useGameLoop(callback: () => void, isActive: boolean, speed: number) {
@@ -108,7 +112,8 @@ function useThrottledKeys() {
 // Huvudkomponenten för spelet
 export default function App() {
   // State-variabler för spelet
-  const [gameState, setGameState] = useState<GameState>('menu');
+  const [gameState, setGameState] = useState<GameState>(GameState.START);
+  const [uiState, setUiState] = useState<UIState>('menu');
   const bag = useMemo(() => new Bag(), []);
   const [cur, setCur] = useState<Piece>(() => spawn(bag));
   const [hold, setHold] = useState<number | null>(null);
@@ -312,8 +317,7 @@ export default function App() {
         
         // Kontrollera game over
         if (isGameOver(newBoard)) {
-          setOver(true);
-          setGameState('gameOver');
+          setState(GameState.GAME_OVER);
           return;
         }
         
@@ -325,8 +329,7 @@ export default function App() {
       
       // Kontrollera game over
       if (isGameOver(newBoard)) {
-        setOver(true);
-        setGameState('gameOver');
+        setState(GameState.GAME_OVER);
         return;
       }
       
@@ -372,22 +375,67 @@ export default function App() {
     setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
   }, [bag, lockDelayTimer]);
 
+  // State transition funktion med validering
+  const setState = useCallback((newState: GameState) => {
+    const validTransition = transitionState(gameState, newState, (from, to) => {
+      console.log(`State transition: ${from} -> ${to}`);
+      
+      // Hantera specifika state transitions
+      switch (to) {
+        case GameState.PLAYING:
+          if (from === GameState.START) {
+            reset(); // Nollställ spelet vid start
+          }
+          setPaused(false);
+          break;
+        case GameState.PAUSE:
+          setPaused(true);
+          // Nollställ lock delay timer vid paus
+          if (lockDelayTimer) {
+            clearTimeout(lockDelayTimer);
+            setLockDelayTimer(null);
+          }
+          setIsLocked(false);
+          break;
+        case GameState.GAME_OVER:
+          setOver(true);
+          setPaused(false);
+          // Stoppa alla timers
+          if (lockDelayTimer) {
+            clearTimeout(lockDelayTimer);
+            setLockDelayTimer(null);
+          }
+          break;
+        case GameState.START:
+          setPaused(false);
+          setOver(false);
+          // Nollställ alla timers
+          if (lockDelayTimer) {
+            clearTimeout(lockDelayTimer);
+            setLockDelayTimer(null);
+          }
+          break;
+      }
+    });
+    
+    if (validTransition) {
+      setGameState(validTransition);
+    }
+  }, [gameState, reset, lockDelayTimer]);
+
   // Starta spel
   const startGame = useCallback(() => {
-    reset();
-    setGameState('playing');
-  }, [reset]);
+    setState(GameState.PLAYING);
+  }, [setState]);
 
   // Pausa spel
   const pauseGame = useCallback(() => {
-    if (gameState === 'playing') {
-      setPaused(true);
-      setGameState('paused');
-    } else if (gameState === 'paused') {
-      setPaused(false);
-      setGameState('playing');
+    if (gameState === GameState.PLAYING) {
+      setState(GameState.PAUSE);
+    } else if (gameState === GameState.PAUSE) {
+      setState(GameState.PLAYING);
     }
-  }, [gameState]);
+  }, [gameState, setState]);
 
 
 
@@ -421,10 +469,13 @@ export default function App() {
     }
   }, [backendConnected]);
 
-  // Tangentbordskontroller med throttle
+  // Tangentbordskontroller med throttle och state-validering
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (gameState !== 'playing' && gameState !== 'paused') return;
+      // Kontrollera om input är tillåten i aktuellt state
+      if (!isInputAllowed(gameState, e.code)) {
+        return;
+      }
       
       setKeyPressed(e.code, true);
       
@@ -432,36 +483,61 @@ export default function App() {
         switch (e.code) {
           case 'ArrowLeft':
             e.preventDefault();
-            move(-1);
+            if (gameState === GameState.PLAYING) move(-1);
             break;
           case 'ArrowRight':
             e.preventDefault();
-            move(1);
+            if (gameState === GameState.PLAYING) move(1);
             break;
           case 'ArrowDown':
             e.preventDefault();
-            softDrop();
+            if (gameState === GameState.PLAYING) softDrop();
             break;
           case 'ArrowUp':
             e.preventDefault();
-            rotateCur(1);
+            if (gameState === GameState.PLAYING) rotateCur(1);
             break;
           case 'Space':
             e.preventDefault();
-            hardDrop();
+            if (gameState === GameState.PLAYING) {
+              hardDrop();
+            } else if (gameState === GameState.START || gameState === GameState.GAME_OVER) {
+              startGame();
+            }
             break;
           case 'KeyC':
             e.preventDefault();
-            holdPiece();
+            if (gameState === GameState.PLAYING) holdPiece();
             break;
           case 'KeyP':
+            e.preventDefault();
+            if (gameState === GameState.PLAYING || gameState === GameState.PAUSE) {
+              pauseGame();
+            }
+            break;
           case 'Escape':
             e.preventDefault();
-            pauseGame();
+            if (gameState === GameState.PLAYING) {
+              // Från PLAYING, gå till START (avsluta spel)
+              setState(GameState.START);
+              setUiState('menu');
+            } else if (gameState === GameState.PAUSE) {
+              pauseGame();
+            }
             break;
           case 'KeyR':
             e.preventDefault();
-            reset();
+            if (gameState === GameState.GAME_OVER) {
+              startGame();
+            }
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (gameState === GameState.START) {
+              startGame();
+            } else if (gameState === GameState.GAME_OVER) {
+              startGame();
+            }
             break;
         }
       }
@@ -481,29 +557,33 @@ export default function App() {
 
   // Spelloop med requestAnimationFrame
   useGameLoop(() => {
-    if (gameState === 'playing' && !paused && !over) {
+    if (gameState === GameState.PLAYING) {
       softDrop();
     }
-  }, gameState === 'playing' && !paused, tickSpeed(level));
+  }, gameState === GameState.PLAYING, tickSpeed(level));
 
-  // Renderar olika skärmar baserat på gameState
-  switch (gameState) {
-    case 'menu':
-      return (
-        <>
-          <AnimatedBackground />
-          <MainMenu
-            onStart={startGame}
-            onHelp={() => setGameState('help')}
-            onInfo={() => setGameState('info')}
-            onHighscores={() => setGameState('highscores')}
-            onExit={() => window.close()}
-          />
-        </>
-      );
+  // Renderar olika skärmar baserat på gameState och uiState
+  if (gameState === GameState.START && uiState === 'menu') {
+    return (
+      <>
+        <AnimatedBackground />
+        <MainMenu
+          onStart={startGame}
+          onHelp={() => setUiState('help')}
+          onInfo={() => setUiState('info')}
+          onHighscores={() => setUiState('highscores')}
+          onExit={() => {
+            if (confirm('Är du säker på att du vill avsluta spelet?')) {
+              // Visa instruktioner för att stänga fönstret
+              alert('För att stänga spelet:\n\n• Tryck Ctrl+W (Windows/Linux) eller Cmd+W (Mac)\n• Eller stäng fliken/fönstret manuellt\n\nTack för att du spelade Tetris! 🎮');
+            }
+          }}
+        />
+      </>
+    );
+  }
 
-    case 'playing':
-    case 'paused':
+  if (gameState === GameState.PLAYING || gameState === GameState.PAUSE) {
   return (
         <>
           <AnimatedBackground />
@@ -511,42 +591,50 @@ export default function App() {
             <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center">
               {/* Spelplan */}
               <div className="flex-shrink-0">
-                <GameBoard grid={board} currentPiece={cur} />
+                <GameBoard grid={board} currentPiece={cur} gameState={gameState} />
                 
                 {/* Paus-overlay */}
-                {paused && (
+                {gameState === GameState.PAUSE && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
                     <div className="bg-gray-800 p-8 rounded-xl border border-gray-600 text-center">
                       <h2 className="text-2xl font-bold text-white mb-4">Pausat</h2>
                       <p className="text-gray-300 mb-4">Tryck P eller Esc för att fortsätta</p>
-            <button 
-              onClick={() => setGameState('menu')}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
-                      >
-                        Avsluta
-            </button>
-          </div>
+                                             <button 
+                         onClick={() => {
+                           // Först gå till START state, sedan till meny
+                           setState(GameState.START);
+                           setUiState('menu');
+                         }}
+                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                       >
+                         Avsluta
+                       </button>
+                    </div>
                   </div>
                 )}
         </div>
 
               {/* Sidopanel */}
-        <SidePanel 
-          next={nextIds} 
-          hold={hold} 
-          level={level} 
-          lines={lines} 
-          points={points} 
-          scores={scores}
-          backendConnected={backendConnected}
-          onQuit={() => setGameState('menu')}
-        />
-      </div>
-    </div>
+              <SidePanel 
+                next={nextIds} 
+                hold={hold} 
+                level={level} 
+                lines={lines} 
+                points={points} 
+                scores={scores}
+                backendConnected={backendConnected}
+                onQuit={() => {
+                  setState(GameState.START);
+                  setUiState('menu');
+                }}
+              />
+            </div>
+          </div>
         </>
       );
+    }
 
-    case 'gameOver':
+    if (gameState === GameState.GAME_OVER) {
   return (
         <>
           <AnimatedBackground />
@@ -607,25 +695,29 @@ export default function App() {
             )}
 
             <div className="space-y-2">
-          <button
+              <button
                 onClick={startGame}
                 className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
               >
                 Spela Igen
               </button>
               <button
-                onClick={() => setGameState('menu')}
+                onClick={() => {
+                  setState(GameState.START);
+                  setUiState('menu');
+                }}
                 className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg font-bold transition-colors"
               >
                 Huvudmeny
-          </button>
-        </div>
+              </button>
+            </div>
       </div>
     </div>
         </>
       );
+    }
 
-    case 'highscores':
+    if (uiState === 'highscores') {
   return (
         <>
           <AnimatedBackground />
@@ -667,18 +759,19 @@ export default function App() {
         )}
 
           <button
-                onClick={() => setGameState('menu')}
-                className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
+            onClick={() => setUiState('menu')}
+            className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
           >
-                Tillbaka
+            Tillbaka
           </button>
         </div>
       </div>
     </div>
         </>
       );
+    }
 
-    case 'help':
+    if (uiState === 'help') {
   return (
         <>
           <AnimatedBackground />
@@ -731,18 +824,19 @@ export default function App() {
               </div>
 
           <button
-                onClick={() => setGameState('menu')}
-                className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
-              >
-                Tillbaka
+            onClick={() => setUiState('menu')}
+            className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
+          >
+            Tillbaka
           </button>
+        </div>
       </div>
-      </div>
-      </div>
+    </div>
         </>
       );
+    }
 
-    case 'info':
+    if (uiState === 'info') {
   return (
         <>
           <AnimatedBackground />
@@ -804,21 +898,37 @@ export default function App() {
       </div>
 
                 <button
-                  onClick={() => setGameState('menu')}
+                  onClick={() => setUiState('menu')}
                   className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
                 >
                   Tillbaka
                 </button>
-        </div>
+              </div>
             </div>
-            </div>
+          </div>
         </>
       );
+    }
 
-    default:
-      return null;
+    // Fallback - visa meny
+    return (
+      <>
+        <AnimatedBackground />
+        <MainMenu
+          onStart={startGame}
+          onHelp={() => setUiState('help')}
+          onInfo={() => setUiState('info')}
+          onHighscores={() => setUiState('highscores')}
+          onExit={() => {
+            if (confirm('Är du säker på att du vill avsluta spelet?')) {
+              // Visa instruktioner för att stänga fönstret
+              alert('För att stänga spelet:\n\n• Tryck Ctrl+W (Windows/Linux) eller Cmd+W (Mac)\n• Eller stäng fliken/fönstret manuellt\n\nTack för att du spelade Tetris! 🎮');
+            }
+          }}
+        />
+      </>
+    );
   }
-}
 
 // Hjälpkomponent för kontrolllista
 function ControlItem({ keyName, action, description }: { 

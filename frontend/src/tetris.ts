@@ -452,3 +452,63 @@ export function rotateWithSRS(p: Piece, dir: 1 | -1, grid: Grid): Piece | null {
   // No valid position found
   return null;
 } 
+
+// Game State Enum för tydlig state-hantering
+export enum GameState {
+  START = 'START',           // Titelskärm eller "Press Start"
+  PLAYING = 'PLAYING',       // Normalt spel
+  PAUSE = 'PAUSE',          // Spelet fryst, väntar på återupptagning
+  GAME_OVER = 'GAME_OVER'   // Slutskärm
+}
+
+// State transition validation
+export const ALLOWED_TRANSITIONS: Record<GameState, GameState[]> = {
+  [GameState.START]: [GameState.PLAYING],
+  [GameState.PLAYING]: [GameState.PAUSE, GameState.GAME_OVER, GameState.START], // Tillåt att gå till START från PLAYING
+  [GameState.PAUSE]: [GameState.PLAYING, GameState.START],
+  [GameState.GAME_OVER]: [GameState.START]
+};
+
+// Input permissions för varje state
+export const INPUT_PERMISSIONS: Record<GameState, string[]> = {
+  [GameState.START]: ['Enter', 'Space'], // Endast start-knappar
+  [GameState.PLAYING]: [
+    'ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp',
+    'Space', 'KeyC', 'KeyP', 'Escape', 'KeyR'
+  ],
+  [GameState.PAUSE]: ['KeyP', 'Escape', 'Enter'], // Endast paus/resume och meny
+  [GameState.GAME_OVER]: ['Enter', 'Space', 'KeyR'] // Endast restart och meny
+};
+
+// State transition funktioner
+export function canTransition(from: GameState, to: GameState): boolean {
+  return ALLOWED_TRANSITIONS[from]?.includes(to) || false;
+}
+
+export function isInputAllowed(state: GameState, key: string): boolean {
+  return INPUT_PERMISSIONS[state]?.includes(key) || false;
+}
+
+// State transition med validering
+export function validateStateTransition(from: GameState, to: GameState): boolean {
+  if (!canTransition(from, to)) {
+    console.warn(`Invalid state transition: ${from} -> ${to}`);
+    return false;
+  }
+  return true;
+}
+
+// State transition med callback
+export function transitionState(
+  from: GameState, 
+  to: GameState, 
+  onTransition?: (from: GameState, to: GameState) => void
+): GameState | null {
+  if (validateStateTransition(from, to)) {
+    if (onTransition) {
+      onTransition(from, to);
+    }
+    return to;
+  }
+  return null;
+} 

@@ -1,13 +1,52 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { Grid, Piece, TETROMINO_COLORS, shape, Cell } from '../tetris';
+import { Grid, Piece, TETROMINO_COLORS, shape, Cell, GameState } from '../tetris';
 
 interface GameBoardProps {
   grid: Grid;
   currentPiece?: Piece;
   cellSize?: number;
+  gameState?: GameState;
 }
 
-const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24 }) => {
+// State Overlay komponent för att visa aktuellt state
+const StateOverlay: React.FC<{ gameState: GameState }> = ({ gameState }) => {
+  const getStateInfo = () => {
+    switch (gameState) {
+      case GameState.START:
+        return { text: 'Tryck Start för att börja', color: 'text-blue-400' };
+      case GameState.PAUSE:
+        return { text: 'PAUSAT', color: 'text-yellow-400' };
+      case GameState.GAME_OVER:
+        return { text: 'GAME OVER', color: 'text-red-400' };
+      default:
+        return null;
+    }
+  };
+
+  const stateInfo = getStateInfo();
+  if (!stateInfo) return null;
+
+  return (
+    <div className="absolute inset-0 bg-black/30 flex items-center justify-center rounded-xl">
+      <div className="bg-gray-900/90 p-6 rounded-xl border border-gray-600 text-center">
+        <h2 className={`text-3xl font-bold ${stateInfo.color} mb-2`}>
+          {stateInfo.text}
+        </h2>
+        {gameState === GameState.START && (
+          <p className="text-gray-300 text-sm">Tryck Enter eller Space</p>
+        )}
+        {gameState === GameState.PAUSE && (
+          <p className="text-gray-300 text-sm">Tryck P eller Esc för att fortsätta</p>
+        )}
+        {gameState === GameState.GAME_OVER && (
+          <p className="text-gray-300 text-sm">Tryck Enter för att spela igen</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24, gameState }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boardWidth = grid[0].length;
   const boardHeight = grid.length;
@@ -120,6 +159,7 @@ const GameBoard: React.FC<GameBoardProps> = ({ grid, currentPiece, cellSize = 24
             display: 'block',
           }}
         />
+        {gameState && <StateOverlay gameState={gameState} />}
       </div>
     </div>
   );
