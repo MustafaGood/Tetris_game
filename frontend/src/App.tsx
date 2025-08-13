@@ -23,19 +23,42 @@ import AnimatedBackground from './components/AnimatedBackground';
 // Möjliga spel-lägen
 type GameState = 'menu' | 'playing' | 'paused' | 'gameOver' | 'help' | 'info' | 'highscores';
 
-// Custom hook för intervall
-function useInterval(callback: () => void, delay: number | null) {
+// Custom hook för requestAnimationFrame med kontrollerad hastighet
+function useGameLoop(callback: () => void, isActive: boolean, speed: number) {
   const savedCallback = useRef(callback);
+  const lastTimeRef = useRef<number>(0);
+  const animationIdRef = useRef<number>(0);
   
   useEffect(() => {
     savedCallback.current = callback;
   }, [callback]);
   
   useEffect(() => {
-    if (delay === null) return;
-    const id = setInterval(() => savedCallback.current(), delay);
-    return () => clearInterval(id);
-  }, [delay]);
+    if (!isActive) {
+      if (animationIdRef.current) {
+        cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = 0;
+      }
+      return;
+    }
+    
+    const gameLoop = (currentTime: number) => {
+      if (currentTime - lastTimeRef.current >= speed) {
+        savedCallback.current();
+        lastTimeRef.current = currentTime;
+      }
+      animationIdRef.current = requestAnimationFrame(gameLoop);
+    };
+    
+    animationIdRef.current = requestAnimationFrame(gameLoop);
+    
+    return () => {
+      if (animationIdRef.current) {
+        cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = 0;
+      }
+    };
+  }, [isActive, speed]);
 }
 
 // Huvudkomponenten för spelet
@@ -278,12 +301,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [gameState, move, softDrop, rotateCur, hardDrop, holdPiece, pauseGame, reset]);
 
-  // Spelloop med intervall
-  useInterval(() => {
+  // Spelloop med requestAnimationFrame
+  useGameLoop(() => {
     if (gameState === 'playing' && !paused && !over) {
       softDrop();
     }
-  }, gameState === 'playing' && !paused ? tickSpeed(level) : null);
+  }, gameState === 'playing' && !paused, tickSpeed(level));
 
   // Renderar olika skärmar baserat på gameState
   switch (gameState) {

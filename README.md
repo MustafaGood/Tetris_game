@@ -31,6 +31,8 @@ Ett komplett och moderniserat Tetris-spel byggt med React, TypeScript, Node.js o
 ### Frontend
 - **React 18** med TypeScript
 - **Vite** för snabb utveckling
+- **HTML5 Canvas** för högprestanda rendering
+- **requestAnimationFrame** för smidig spelloop
 - **Tailwind CSS** för styling
 - **Custom animations** och glassmorphism-effekter
 - **ESLint** för kodkvalitet
@@ -215,11 +217,36 @@ tetris-game/
 
 ## 📊 Prestanda
 
+- **HTML5 Canvas rendering** för högprestanda spelplan
+- **requestAnimationFrame** för smidig 60fps spelloop
 - **Komprimering** med gzip
 - **Optimerad rendering** med React.memo och useCallback
 - **Efficient state-hantering** med useReducer där lämpligt
 - **Lazy loading** av komponenter (kan implementeras)
 - **Database-indexering** för snabba queries
+
+## 📋 Projektplanering med Trello
+
+Vi använder [Trello](https://trello.com/) för att hantera vår produktbacklog och projektplanering. Trello hjälper oss att:
+
+- **Organisera uppgifter** i visuella kort och listor
+- **Spåra framsteg** med drag-and-drop funktionalitet
+- **Automatisera arbetsflöden** med Butler automation
+- **Integrera med andra verktyg** via Power-Ups
+- **Samarbeta i realtid** med teamet
+
+### Trello Board-struktur
+- **Backlog** - Kommande funktioner och förbättringar
+- **To Do** - Uppgifter som är redo att arbetas med
+- **In Progress** - Aktuellt arbete
+- **Review** - Kod som väntar på granskning
+- **Done** - Avslutade uppgifter
+
+### Automatisering med Butler
+- Automatisk flytt av kort baserat på etiketter
+- Påminnelser för deadlines
+- Automatisk tilldelning av uppgifter
+- Statistik och rapporter
 
 ## 🤝 Bidrag
 
@@ -234,6 +261,7 @@ tetris-game/
 - Följ TypeScript best practices
 - Skriv tester för nya funktioner
 - Dokumentera API-ändringar
+- Uppdatera Trello-kort med framsteg
 
 ## 📄 Licens
 
@@ -242,6 +270,27 @@ Detta projekt är öppen källkod och tillgängligt under MIT-licensen.
 ## 🙏 Tack
 
 Tack för att du spelar vårt Tetris-spel! Hoppas du tycker om de nya förbättringarna i version 2.0.0! 🎮✨
+
+## 🚀 Kommande Funktioner
+
+Se vår [Trello Backlog](https://trello.com/) för detaljerad planering av kommande funktioner:
+
+### Planerade Förbättringar
+- **Multiplayer-läge** - Spela mot andra online
+- **Tema-system** - Anpassningsbara visuella teman
+- **Achievement-system** - Lås upp prestationer
+- **Ljud och musik** - Förbättrad ljudupplevelse
+- **Mobilanpassning** - Touch-kontroller för mobiler
+- **Offline-läge** - Spela utan internetanslutning
+- **Sociala funktioner** - Dela highscores på sociala medier
+- **AI-motståndare** - Spela mot datorn
+
+### Tekniska Förbättringar
+- **WebSocket-integration** för realtidsmultiplayer
+- **Service Worker** för offline-funktionalitet
+- **Progressive Web App (PWA)** funktioner
+- **Docker-containerisering** för enkel deployment
+- **CI/CD-pipeline** med automatisk testing
 
 ## 📝 Changelog
 
