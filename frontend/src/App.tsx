@@ -42,10 +42,13 @@ import { fetchScores, postScore, deleteScore, testConnection, Score, formatDate,
 import GameBoard from './components/GameBoard';
 import SidePanel from './components/SidePanel';
 import MainMenu from './components/MainMenu';
+import Settings from './components/Settings';
+import Help from './components/Help';
 import AnimatedBackground from './components/AnimatedBackground';
+import { useSound } from './hooks/useSound';
 
 // UI States för olika skärmar (separat från GameState)
-type UIState = 'menu' | 'help' | 'info' | 'highscores';
+type UIState = 'menu' | 'help' | 'info' | 'highscores' | 'settings';
 
 // Custom hook för requestAnimationFrame med kontrollerad hastighet
 function useGameLoop(callback: () => void, isActive: boolean, speed: number) {
@@ -153,11 +156,16 @@ export default function App() {
   const [combo, setCombo] = useState(0);
   const [lastMove, setLastMove] = useState<string>('');
   
-  // Ghost piece setting
+  // Settings
   const [ghostPieceEnabled, setGhostPieceEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [startLevel, setStartLevel] = useState(1);
   
   // Throttle-hook för tangentbordskontroller
   const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
+  
+  // Ljud-hook
+  const sounds = useSound(soundEnabled);
 
   // Fyller "next" med 5 block vid start
   useEffect(() => {
@@ -220,10 +228,12 @@ export default function App() {
     if (dropDistance > 0) {
       const dropScore = calculateHardDropScore(dropDistance, level);
       setPoints(prev => prev + dropScore);
+      // Spela drop-ljud
+      sounds.playDrop();
     }
     
     lockPiece(p);
-  }, [cur, board, over, paused, isClearingLines, level]);
+  }, [cur, board, over, paused, isClearingLines, level, sounds]);
 
   // Mjuk fall (soft drop) med lock delay och poäng
   const softDrop = useCallback(() => {
@@ -285,11 +295,11 @@ export default function App() {
         setLockDelayTimer(null);
       }
       setIsLocked(false);
-      // Här kan man lägga till ljudeffekt för rotation
-      // playRotationSound();
+      // Spela rotationsljud
+      sounds.playRotate();
     }
     // Om rotation misslyckas (null returneras) görs ingenting
-  }, [cur, board, over, paused, isClearingLines, lockDelayTimer]);
+  }, [cur, board, over, paused, isClearingLines, lockDelayTimer, sounds]);
 
   // Lås block på plats med förbättrad line clear
   const lockPiece = useCallback((p: Piece) => {
@@ -339,6 +349,20 @@ export default function App() {
         const newLines = lines + fullRows.length;
         const newLevel = Math.floor(newLines / 10) + 1;
         
+        // Spela ljud baserat på typ av clear
+        if (isTSpinClear) {
+          sounds.playTSpin();
+        } else if (isTetrisClear) {
+          sounds.playTetris();
+        } else {
+          sounds.playLineClear();
+        }
+        
+        // Spela level up ljud om nivån ökar
+        if (newLevel > level) {
+          sounds.playLevelUp();
+        }
+        
         setLines(newLines);
         setLevel(newLevel);
         setPoints(prev => prev + scoreGain);
@@ -353,6 +377,7 @@ export default function App() {
         
         // Kontrollera game over
         if (isGameOver(newBoard)) {
+          sounds.playGameOver();
           setState(GameState.GAME_OVER);
           return;
         }
@@ -366,13 +391,14 @@ export default function App() {
       
       // Kontrollera game over
       if (isGameOver(newBoard)) {
+        sounds.playGameOver();
         setState(GameState.GAME_OVER);
         return;
       }
       
       newPiece();
     }
-  }, [board, lines, level, lastTetris, combo, lastMove, newPiece]);
+  }, [board, lines, level, lastTetris, combo, lastMove, newPiece, sounds]);
 
   // Håll-funktion
   const holdPiece = useCallback(() => {
@@ -395,7 +421,7 @@ export default function App() {
     setCur(spawn(bag));
     setHold(null);
     setCanHold(true);
-    setLevel(1);
+    setLevel(startLevel); // Använd startnivå istället för alltid nivå 1
     setLines(0);
     setPoints(0);
     setOver(false);
@@ -412,7 +438,7 @@ export default function App() {
     }
     bag.reset();
     setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
-  }, [bag, lockDelayTimer]);
+  }, [bag, lockDelayTimer, startLevel]);
 
   // State transition funktion med validering
   const setState = useCallback((newState: GameState) => {
@@ -637,9 +663,9 @@ export default function App() {
         <>
           <AnimatedBackground />
           <div className="min-h-screen p-4 relative z-10">
-            <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center">
+            <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center game-container">
               {/* Spelplan */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 game-board-container">
                 <GameBoard grid={board} currentPiece={cur} gameState={gameState} ghostPieceEnabled={ghostPieceEnabled} />
                 
                 {/* Paus-overlay */}
@@ -664,7 +690,8 @@ export default function App() {
         </div>
 
               {/* Sidopanel */}
-              <SidePanel 
+              <div className="side-panel-container">
+                <SidePanel 
                 next={nextIds} 
                 hold={hold} 
                 level={level} 
@@ -676,11 +703,12 @@ export default function App() {
                 backendConnected={backendConnected}
                 ghostPieceEnabled={ghostPieceEnabled}
                 onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
-                onQuit={() => {
-                  setState(GameState.START);
-                  setUiState('menu');
-                }}
-              />
+                                  onQuit={() => {
+                    setState(GameState.START);
+                    setUiState('menu');
+                  }}
+                />
+              </div>
             </div>
           </div>
         </>
@@ -857,82 +885,27 @@ export default function App() {
     }
 
     if (uiState === 'help') {
-  return (
+      return (
         <>
           <AnimatedBackground />
-          <div className="min-h-screen p-4 relative z-10">
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
-              <h2 className="text-3xl font-bold text-white mb-6 text-center">❓ Hjälp</h2>
-              
-              <div className="grid md:grid-cols-2 gap-8">
-            <div>
-                  <h3 className="text-xl font-bold text-white mb-4">🎮 Spelkontroller</h3>
-                  <div className="space-y-3">
-                    <ControlItem keyName="← →" action="Flytta" description="Flytta pjäs vänster/höger" />
-                    <ControlItem keyName="↓" action="Snabb fall" description="Låt pjäs falla snabbare" />
-                    <ControlItem keyName="↑" action="Rotera" description="Rotera pjäs medurs" />
-                    <ControlItem keyName="Space" action="Hård fall" description="Låt pjäs falla direkt" />
-                    <ControlItem keyName="C" action="Håll" description="Spara pjäs för senare" />
-                    <ControlItem keyName="P/Esc" action="Pausa" description="Pausa eller fortsätt spel" />
-                    <ControlItem keyName="R" action="Starta om" description="Starta om spelet" />
-            </div>
-                </div>
-                
-            <div>
-                  <h3 className="text-xl font-bold text-white mb-4">🏆 Poängsystem</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">1 rad:</span>
-                      <span className="text-white">40 × nivå</span>
-            </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">2 rader:</span>
-                      <span className="text-white">100 × nivå</span>
-          </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">3 rader:</span>
-                      <span className="text-white">300 × nivå</span>
-        </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">4 rader:</span>
-                      <span className="text-white">1200 × nivå</span>
-              </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Combo:</span>
-                      <span className="text-white">50 × nivå × combo</span>
-            </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">T-Spin:</span>
-                      <span className="text-white">50% bonus</span>
-          </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Back-to-Back:</span>
-                      <span className="text-white">50% bonus</span>
-        </div>
-          </div>
-                  
-                  <div className="mt-6 p-4 bg-gray-700 rounded-lg">
-                    <p className="text-gray-300 text-sm">
-                      Ny nivå var 10:e rad. Spelet går snabbare på högre nivåer!
-                      <br />
-                      Combo ökar för varje rad som rensas i rad.
-                      <br />
-                      T-Spin och Back-to-Back ger extra poäng!
-                    </p>
-      </div>
-                </div>
-              </div>
+          <Help onBack={() => setUiState('menu')} />
+        </>
+      );
+    }
 
-          <button
-            onClick={() => setUiState('menu')}
-            className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
-          >
-            Tillbaka
-          </button>
-        </div>
-      </div>
-    </div>
+    if (uiState === 'settings') {
+      return (
+        <>
+          <AnimatedBackground />
+          <Settings
+            ghostPieceEnabled={ghostPieceEnabled}
+            soundEnabled={soundEnabled}
+            startLevel={startLevel}
+            onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
+            onToggleSound={() => setSoundEnabled(!soundEnabled)}
+            onStartLevelChange={setStartLevel}
+            onBack={() => setUiState('menu')}
+          />
         </>
       );
     }
@@ -1020,6 +993,7 @@ export default function App() {
           onHelp={() => setUiState('help')}
           onInfo={() => setUiState('info')}
           onHighscores={() => setUiState('highscores')}
+          onSettings={() => setUiState('settings')}
           onExit={() => {
             if (confirm('Är du säker på att du vill avsluta spelet?')) {
               // Visa instruktioner för att stänga fönstret

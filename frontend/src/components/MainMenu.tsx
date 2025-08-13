@@ -5,10 +5,11 @@ interface MainMenuProps {
   onHelp: () => void;
   onInfo: () => void;
   onHighscores: () => void;
+  onSettings: () => void;
   onExit: () => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onStart, onHelp, onInfo, onHighscores, onExit }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onStart, onHelp, onInfo, onHighscores, onSettings, onExit }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
       <div className="text-center space-y-8">
@@ -32,15 +33,19 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onHelp, onInfo, onHighscor
             🏆 Highscores
           </MenuButton>
           
-          <MenuButton onClick={onHelp} color="from-blue-500 to-cyan-500" delay="200">
+          <MenuButton onClick={onSettings} color="from-purple-500 to-pink-500" delay="200">
+            ⚙️ Inställningar
+          </MenuButton>
+          
+          <MenuButton onClick={onHelp} color="from-blue-500 to-cyan-500" delay="300">
             ❓ Hjälp
           </MenuButton>
           
-          <MenuButton onClick={onInfo} color="from-purple-500 to-pink-500" delay="300">
+          <MenuButton onClick={onInfo} color="from-indigo-500 to-purple-500" delay="400">
             ℹ️ Info
           </MenuButton>
           
-          <MenuButton onClick={onExit} color="from-red-500 to-pink-500" delay="400">
+          <MenuButton onClick={onExit} color="from-red-500 to-pink-500" delay="500">
             🚪 Avsluta
           </MenuButton>
         </div>
