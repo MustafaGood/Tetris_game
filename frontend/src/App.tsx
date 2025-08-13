@@ -8,11 +8,17 @@ import {
   collide, 
   merge, 
   clearLines, 
+  getFullRows,
+  clearRows,
+  applyGravity,
   rotate, 
   rotateWithSRS,
   tickSpeed, 
   W, 
   calculateScore,
+  calculateScoreWithB2B,
+  isTetris,
+  calculateTotalScore,
   isGameOver,
   isLanded,
   canMoveLeft,
@@ -124,6 +130,11 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const LOCK_DELAY_MS = 500; // 500ms lock delay
   
+  // Line clear system
+  const [isClearingLines, setIsClearingLines] = useState(false);
+  const [lastTetris, setLastTetris] = useState(false); // För Back-to-Back
+  const [lineClearAnimation, setLineClearAnimation] = useState<number[]>([]);
+  
   // Throttle-hook för tangentbordskontroller
   const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
 
@@ -166,7 +177,7 @@ export default function App() {
 
   // Hård fall (hard drop)
   const hardDrop = useCallback(() => {
-    if (over || paused) return;
+    if (over || paused || isClearingLines) return;
     let p = { ...cur };
     let dropDistance = 0;
     
@@ -182,11 +193,11 @@ export default function App() {
     }
     
     lockPiece(p);
-  }, [cur, board, over, paused]);
+  }, [cur, board, over, paused, isClearingLines]);
 
   // Mjuk fall (soft drop) med lock delay
   const softDrop = useCallback(() => {
-    if (over || paused) return;
+    if (over || paused || isClearingLines) return;
     const p = { ...cur, y: cur.y + 1 };
     if (!collide(board, p)) {
       setCur(p);
@@ -208,11 +219,11 @@ export default function App() {
         setIsLocked(true);
       }
     }
-  }, [cur, board, over, paused, lockDelayTimer, isLocked]);
+  }, [cur, board, over, paused, isClearingLines, lockDelayTimer, isLocked]);
 
   // Flytta block med lock delay reset
   const move = useCallback((dx: number) => {
-    if (over || paused) return;
+    if (over || paused || isClearingLines) return;
     const p = { ...cur, x: cur.x + dx };
     if (!collide(board, p)) {
       setCur(p);
@@ -223,11 +234,11 @@ export default function App() {
       }
       setIsLocked(false);
     }
-  }, [cur, board, over, paused, lockDelayTimer]);
+  }, [cur, board, over, paused, isClearingLines, lockDelayTimer]);
 
   // Rotera block med SRS (Super Rotation System) och lock delay reset
   const rotateCur = useCallback((dir: 1 | -1) => {
-    if (over || paused) return;
+    if (over || paused || isClearingLines) return;
     
     // Använd SRS med wall kicks
     const rotatedPiece = rotateWithSRS(cur, dir, board);
@@ -244,9 +255,9 @@ export default function App() {
       // playRotationSound();
     }
     // Om rotation misslyckas (null returneras) görs ingenting
-  }, [cur, board, over, paused, lockDelayTimer]);
+  }, [cur, board, over, paused, isClearingLines, lockDelayTimer]);
 
-  // Lås block på plats med validering
+  // Lås block på plats med förbättrad line clear
   const lockPiece = useCallback((p: Piece) => {
     // Validera att pjäsen inte överlappar med befintliga block
     if (collide(board, p)) {
@@ -263,29 +274,65 @@ export default function App() {
       return;
     }
     
-    const cleared = clearLines(newBoard);
+    // Upptäck fulla rader
+    const fullRows = getFullRows(newBoard);
     
-    if (cleared > 0) {
-      const newLines = lines + cleared;
-      const newLevel = Math.floor(newLines / 10) + 1;
-      const scoreGain = calculateScore(cleared, level);
+    if (fullRows.length > 0) {
+      // Blockera input under line clear
+      setIsClearingLines(true);
       
-      setLines(newLines);
-      setLevel(newLevel);
-      setPoints(prev => prev + scoreGain);
+      // Starta animation
+      setLineClearAnimation(fullRows);
+      
+      // Vänta lite för animation, sedan rensa raderna
+      setTimeout(() => {
+        // Rensa raderna
+        clearRows(newBoard, fullRows);
+        
+        // Beräkna poäng med Back-to-Back
+        const isTetrisClear = isTetris(fullRows.length);
+        const isBackToBack = lastTetris && isTetrisClear;
+        const scoreGain = calculateScoreWithB2B(fullRows.length, level, isBackToBack);
+        
+        // Uppdatera state
+        const newLines = lines + fullRows.length;
+        const newLevel = Math.floor(newLines / 10) + 1;
+        
+        setLines(newLines);
+        setLevel(newLevel);
+        setPoints(prev => prev + scoreGain);
+        setLastTetris(isTetrisClear);
+        
+        // Sluta animation
+        setLineClearAnimation([]);
+        setIsClearingLines(false);
+        
+        // Uppdatera board
+        setBoard([...newBoard]);
+        
+        // Kontrollera game over
+        if (isGameOver(newBoard)) {
+          setOver(true);
+          setGameState('gameOver');
+          return;
+        }
+        
+        newPiece();
+      }, 300); // 300ms animation
+    } else {
+      // Inga rader att rensa, fortsätt direkt
+      setBoard(newBoard);
+      
+      // Kontrollera game over
+      if (isGameOver(newBoard)) {
+        setOver(true);
+        setGameState('gameOver');
+        return;
+      }
+      
+      newPiece();
     }
-    
-    setBoard(newBoard);
-    
-    // Kontrollera game over
-    if (isGameOver(newBoard)) {
-      setOver(true);
-      setGameState('gameOver');
-      return;
-    }
-    
-    newPiece();
-  }, [board, lines, level, newPiece]);
+  }, [board, lines, level, lastTetris, newPiece]);
 
   // Håll-funktion
   const holdPiece = useCallback(() => {
@@ -314,6 +361,9 @@ export default function App() {
     setOver(false);
     setPaused(false);
     setIsLocked(false);
+    setIsClearingLines(false);
+    setLastTetris(false);
+    setLineClearAnimation([]);
     if (lockDelayTimer) {
       clearTimeout(lockDelayTimer);
       setLockDelayTimer(null);

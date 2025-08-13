@@ -221,18 +221,69 @@ export function merge(grid: Grid, p: Piece): void {
   }
 }
 
-// Rensar kompletta rader och returnerar antal rensade rader
-export function clearLines(grid: Grid): number {
-  let cleared = 0;
-  for (let y = H - 1; y >= 0; y--) {
+// Upptäcker fulla rader och returnerar deras index
+export function getFullRows(grid: Grid): number[] {
+  const fullRows: number[] = [];
+  for (let y = 0; y < H; y++) {
     if (grid[y].every(c => c !== 0)) {
-      grid.splice(y, 1);
-      grid.unshift(Array(W).fill(0) as Cell[]);
-      cleared++;
-      y++; // Kontrollera samma rad igen
+      fullRows.push(y);
     }
   }
-  return cleared;
+  return fullRows;
+}
+
+// Rensar specifika rader och applicerar gravity
+export function clearRows(grid: Grid, rows: number[]): void {
+  if (rows.length === 0) return;
+  
+  // Sortera raderna i fallande ordning för att undvika index-problem
+  const sortedRows = [...rows].sort((a, b) => b - a);
+  
+  // Ta bort de fulla raderna
+  for (const rowIndex of sortedRows) {
+    grid.splice(rowIndex, 1);
+  }
+  
+  // Lägg till tomma rader högst upp (gravity)
+  for (let i = 0; i < rows.length; i++) {
+    grid.unshift(Array(W).fill(0) as Cell[]);
+  }
+}
+
+// Förbättrad clearLines funktion som använder de nya funktionerna
+export function clearLines(grid: Grid): number {
+  const fullRows = getFullRows(grid);
+  clearRows(grid, fullRows);
+  return fullRows.length;
+}
+
+// Kontrollerar om gravity behöver appliceras
+export function needsGravity(grid: Grid): boolean {
+  for (let y = H - 1; y > 0; y--) {
+    for (let x = 0; x < W; x++) {
+      if (grid[y][x] === 0 && grid[y - 1][x] !== 0) {
+        return true; // Det finns ett hål som behöver fylla
+      }
+    }
+  }
+  return false;
+}
+
+// Applicerar gravity till griden
+export function applyGravity(grid: Grid): void {
+  let moved = true;
+  while (moved) {
+    moved = false;
+    for (let y = H - 1; y > 0; y--) {
+      for (let x = 0; x < W; x++) {
+        if (grid[y][x] === 0 && grid[y - 1][x] !== 0) {
+          grid[y][x] = grid[y - 1][x];
+          grid[y - 1][x] = 0;
+          moved = true;
+        }
+      }
+    }
+  }
 }
 
 // Beräknar fallhastighet baserat på nivå
@@ -245,6 +296,41 @@ export function tickSpeed(level: number): number {
 export function calculateScore(lines: number, level: number): number {
   const lineScores = [0, 40, 100, 300, 1200]; // 0, 1, 2, 3, 4 rader
   return lineScores[lines] * level;
+}
+
+// Beräknar poäng med Back-to-Back bonus
+export function calculateScoreWithB2B(lines: number, level: number, isBackToBack: boolean = false): number {
+  const baseScore = calculateScore(lines, level);
+  
+  // Back-to-Back bonus för Tetris (4 rader)
+  if (lines === 4 && isBackToBack) {
+    return Math.floor(baseScore * 1.5); // 50% bonus för B2B Tetris
+  }
+  
+  return baseScore;
+}
+
+// Kontrollerar om en line clear är en Tetris (4 rader)
+export function isTetris(lines: number): boolean {
+  return lines === 4;
+}
+
+// Kontrollerar om en line clear är en T-Spin (för framtida implementation)
+export function isTSpin(lines: number, pieceId: number, lastMove: string): boolean {
+  // Grundläggande T-Spin detection (kan utökas)
+  return lines > 0 && pieceId === 6 && lastMove === 'rotate';
+}
+
+// Beräknar total poäng för en line clear med alla bonusar
+export function calculateTotalScore(lines: number, level: number, isBackToBack: boolean = false, isTSpin: boolean = false): number {
+  let score = calculateScoreWithB2B(lines, level, isBackToBack);
+  
+  // T-Spin bonus (för framtida implementation)
+  if (isTSpin) {
+    score = Math.floor(score * 1.5);
+  }
+  
+  return score;
 }
 
 // Kontrollerar om spelet är över (när nya pjäser krockar direkt)

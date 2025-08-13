@@ -1,6 +1,6 @@
 import React from 'react';
 import GameBoard from './GameBoard';
-import { emptyGrid, Grid, collide, spawn, Bag, Piece, W, H, rotateWithSRS, collideWithWalls, collideWithBottom, collideWithBlocks, canMoveLeft, canMoveRight, canMoveDown, isLanded, validateGrid } from '../tetris';
+import { emptyGrid, Grid, collide, spawn, Bag, Piece, W, H, rotateWithSRS, collideWithWalls, collideWithBottom, collideWithBlocks, canMoveLeft, canMoveRight, canMoveDown, isLanded, validateGrid, getFullRows, clearRows, applyGravity, isTetris, calculateScoreWithB2B } from '../tetris';
 
 // Manual test documentation för rörelselogik
 // Dessa tester ska köras manuellt i webbläsaren
@@ -247,6 +247,139 @@ export const MovementTestSuite = {
     return result;
   },
 
+  // Test 22: Upptäck fulla rader
+  testGetFullRows: () => {
+    const grid = emptyGrid();
+    // Skapa en full rad
+    for (let x = 0; x < W; x++) {
+      grid[15][x] = 1;
+    }
+    const fullRows = getFullRows(grid);
+    const result = fullRows.length === 1 && fullRows[0] === 15;
+    console.log('Test 22 - Upptäck fulla rader:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 23: Rensa rader
+  testClearRows: () => {
+    const grid = emptyGrid();
+    // Skapa två fulla rader
+    for (let x = 0; x < W; x++) {
+      grid[15][x] = 1;
+      grid[16][x] = 2;
+    }
+    clearRows(grid, [15, 16]);
+    
+    // Kontrollera att raderna är borta och nya tomma rader lagts till
+    const result = grid[0].every(cell => cell === 0) && grid[1].every(cell => cell === 0);
+    console.log('Test 23 - Rensa rader:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 24: Gravity
+  testApplyGravity: () => {
+    const grid = emptyGrid();
+    // Skapa en situation med hål
+    grid[15][0] = 1;
+    grid[15][1] = 2;
+    grid[16][0] = 0; // Hål
+    grid[16][1] = 3;
+    
+    applyGravity(grid);
+    
+    // Kontrollera att hålet är fyllt
+    const result = grid[16][0] !== 0;
+    console.log('Test 24 - Gravity:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 25: Single line clear
+  testSingleLineClear: () => {
+    const grid = emptyGrid();
+    // Skapa en full rad
+    for (let x = 0; x < W; x++) {
+      grid[15][x] = 1;
+    }
+    const fullRows = getFullRows(grid);
+    const result = fullRows.length === 1;
+    console.log('Test 25 - Single line clear:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 26: Double line clear
+  testDoubleLineClear: () => {
+    const grid = emptyGrid();
+    // Skapa två fulla rader
+    for (let x = 0; x < W; x++) {
+      grid[15][x] = 1;
+      grid[16][x] = 2;
+    }
+    const fullRows = getFullRows(grid);
+    const result = fullRows.length === 2;
+    console.log('Test 26 - Double line clear:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 27: Tetris (4 rader)
+  testTetrisClear: () => {
+    const grid = emptyGrid();
+    // Skapa fyra fulla rader
+    for (let y = 15; y < 19; y++) {
+      for (let x = 0; x < W; x++) {
+        grid[y][x] = 1;
+      }
+    }
+    const fullRows = getFullRows(grid);
+    const result = fullRows.length === 4 && isTetris(fullRows.length);
+    console.log('Test 27 - Tetris (4 rader):', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 28: Back-to-Back bonus
+  testBackToBackBonus: () => {
+    const level = 5;
+    const normalScore = calculateScoreWithB2B(4, level, false); // Normal Tetris
+    const b2bScore = calculateScoreWithB2B(4, level, true); // Back-to-Back Tetris
+    
+    const result = b2bScore > normalScore;
+    console.log('Test 28 - Back-to-Back bonus:', result ? 'PASS' : 'FAIL');
+    console.log(`  Normal: ${normalScore}, B2B: ${b2bScore}`);
+    return result;
+  },
+
+  // Test 29: Separata icke-sammanhängande rader
+  testSeparateFullRows: () => {
+    const grid = emptyGrid();
+    // Skapa fulla rader på rad 5 och 15
+    for (let x = 0; x < W; x++) {
+      grid[5][x] = 1;
+      grid[15][x] = 2;
+    }
+    const fullRows = getFullRows(grid);
+    const result = fullRows.length === 2 && fullRows.includes(5) && fullRows.includes(15);
+    console.log('Test 29 - Separata icke-sammanhängande rader:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
+  // Test 30: Top-out scenario
+  testTopOutScenario: () => {
+    const grid = emptyGrid();
+    // Fyll de övre raderna
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < W; x++) {
+        grid[y][x] = 1;
+      }
+    }
+    // Försök rensa rader
+    const fullRows = getFullRows(grid);
+    clearRows(grid, fullRows);
+    
+    // Kontrollera att griden fortfarande är giltig
+    const result = validateGrid(grid);
+    console.log('Test 30 - Top-out scenario:', result ? 'PASS' : 'FAIL');
+    return result;
+  },
+
   // Kör alla tester
   runAllTests: () => {
     console.log('🚀 Körning av Movement Logic Tests...');
@@ -273,7 +406,16 @@ export const MovementTestSuite = {
       MovementTestSuite.testMovementInAllDirections,
       MovementTestSuite.testPieceIsLanded,
       MovementTestSuite.testGridValidation,
-      MovementTestSuite.testNoBlockOverlap
+      MovementTestSuite.testNoBlockOverlap,
+      MovementTestSuite.testGetFullRows,
+      MovementTestSuite.testClearRows,
+      MovementTestSuite.testApplyGravity,
+      MovementTestSuite.testSingleLineClear,
+      MovementTestSuite.testDoubleLineClear,
+      MovementTestSuite.testTetrisClear,
+      MovementTestSuite.testBackToBackBonus,
+      MovementTestSuite.testSeparateFullRows,
+      MovementTestSuite.testTopOutScenario
     ];
     
     let passed = 0;
@@ -337,13 +479,25 @@ export const ManualTestInstructions = {
      12. Rotation i tighta utrymmen - ska blockeras
      13. O-piece rotation - ska inte rotera (förblir samma)
      
-     Lock Delay tester:
-     14. Pjäs låser sig efter 500ms när den landar
-     15. Lock delay återställs när pjäsen rör sig
-     16. Lock delay återställs vid rotation
-     17. Pjäs låser sig omedelbart vid hard drop
-     18. Inga block överlappar varandra
-     19. Kollisionsdetektering fungerar i alla riktningar
+           Lock Delay tester:
+      14. Pjäs låser sig efter 500ms när den landar
+      15. Lock delay återställs när pjäsen rör sig
+      16. Lock delay återställs vid rotation
+      17. Pjäs låser sig omedelbart vid hard drop
+      18. Inga block överlappar varandra
+      19. Kollisionsdetektering fungerar i alla riktningar
+      
+      Line Clear tester:
+      20. Single line clear (1 rad) - rätt poäng ges
+      21. Double line clear (2 rader) - rätt poäng ges
+      22. Triple line clear (3 rader) - rätt poäng ges
+      23. Tetris (4 rader) - rätt poäng ges
+      24. Back-to-Back Tetris - bonus poäng ges
+      25. Separata icke-sammanhängande rader rensas korrekt
+      26. Gravity fungerar - inga hål kvar
+      27. Input blockeras under line clear animation
+      28. HUD uppdateras korrekt (score/level/lines)
+      29. Top-out scenario hanteras korrekt
   `,
   
   visualChecks: `
@@ -364,11 +518,19 @@ export const ManualTestInstructions = {
      11. O-piece förblir oförändrad vid rotation
      12. I-piece har unika rotationer (längre offsets)
      
-     Lock Delay kontroller:
-     13. Pjäser låser sig naturligt efter kort fördröjning
-     14. Lock delay återställs smidigt vid rörelse/rotation
-     15. Inga block glitchar eller överlappar
-     16. Kollisionsdetektering känns responsiv och korrekt
+           Lock Delay kontroller:
+      13. Pjäser låser sig naturligt efter kort fördröjning
+      14. Lock delay återställs smidigt vid rörelse/rotation
+      15. Inga block glitchar eller överlappar
+      16. Kollisionsdetektering känns responsiv och korrekt
+      
+      Line Clear kontroller:
+      17. Line clear animation visas tydligt
+      18. Poäng uppdateras korrekt för olika line clear-typer
+      19. Back-to-Back bonus fungerar för Tetris
+      20. Gravity fungerar smidigt utan lagg
+      21. HUD uppdateras i realtid
+      22. Inga glitchar vid snabba line clears
   `,
   
   runTests: () => {
