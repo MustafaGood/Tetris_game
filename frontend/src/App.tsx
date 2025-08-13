@@ -9,10 +9,16 @@ import {
   merge, 
   clearLines, 
   rotate, 
+  rotateWithSRS,
   tickSpeed, 
   W, 
   calculateScore,
-  isGameOver
+  isGameOver,
+  isLanded,
+  canMoveLeft,
+  canMoveRight,
+  canMoveDown,
+  validateGrid
 } from './tetris';
 import { fetchScores, postScore, deleteScore, testConnection, Score, formatDate, formatScore } from './api';
 import GameBoard from './components/GameBoard';
@@ -113,6 +119,11 @@ export default function App() {
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
   
+  // Lock delay system
+  const [lockDelayTimer, setLockDelayTimer] = useState<number | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const LOCK_DELAY_MS = 500; // 500ms lock delay
+  
   // Throttle-hook för tangentbordskontroller
   const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
 
@@ -173,32 +184,85 @@ export default function App() {
     lockPiece(p);
   }, [cur, board, over, paused]);
 
-  // Mjuk fall (soft drop)
+  // Mjuk fall (soft drop) med lock delay
   const softDrop = useCallback(() => {
     if (over || paused) return;
     const p = { ...cur, y: cur.y + 1 };
-    if (!collide(board, p)) setCur(p);
-    else lockPiece(cur);
-  }, [cur, board, over, paused]);
+    if (!collide(board, p)) {
+      setCur(p);
+      // Reset lock delay timer när pjäsen rör sig
+      if (lockDelayTimer) {
+        clearTimeout(lockDelayTimer);
+        setLockDelayTimer(null);
+      }
+      setIsLocked(false);
+    } else {
+      // Pjäsen kan inte falla längre - starta lock delay
+      if (!isLocked && !lockDelayTimer) {
+        const timer = setTimeout(() => {
+          lockPiece(cur);
+          setLockDelayTimer(null);
+          setIsLocked(false);
+        }, LOCK_DELAY_MS);
+        setLockDelayTimer(timer);
+        setIsLocked(true);
+      }
+    }
+  }, [cur, board, over, paused, lockDelayTimer, isLocked]);
 
-  // Flytta block
+  // Flytta block med lock delay reset
   const move = useCallback((dx: number) => {
     if (over || paused) return;
     const p = { ...cur, x: cur.x + dx };
-    if (!collide(board, p)) setCur(p);
-  }, [cur, board, over, paused]);
+    if (!collide(board, p)) {
+      setCur(p);
+      // Reset lock delay timer när pjäsen rör sig
+      if (lockDelayTimer) {
+        clearTimeout(lockDelayTimer);
+        setLockDelayTimer(null);
+      }
+      setIsLocked(false);
+    }
+  }, [cur, board, over, paused, lockDelayTimer]);
 
-  // Rotera block
+  // Rotera block med SRS (Super Rotation System) och lock delay reset
   const rotateCur = useCallback((dir: 1 | -1) => {
     if (over || paused) return;
-    const r = rotate(cur, dir);
-    if (!collide(board, r)) setCur(r);
-  }, [cur, board, over, paused]);
+    
+    // Använd SRS med wall kicks
+    const rotatedPiece = rotateWithSRS(cur, dir, board);
+    
+    if (rotatedPiece) {
+      setCur(rotatedPiece);
+      // Reset lock delay timer när pjäsen roteras
+      if (lockDelayTimer) {
+        clearTimeout(lockDelayTimer);
+        setLockDelayTimer(null);
+      }
+      setIsLocked(false);
+      // Här kan man lägga till ljudeffekt för rotation
+      // playRotationSound();
+    }
+    // Om rotation misslyckas (null returneras) görs ingenting
+  }, [cur, board, over, paused, lockDelayTimer]);
 
-  // Lås block på plats
+  // Lås block på plats med validering
   const lockPiece = useCallback((p: Piece) => {
+    // Validera att pjäsen inte överlappar med befintliga block
+    if (collide(board, p)) {
+      console.warn('Attempting to lock piece that collides with board');
+      return;
+    }
+    
     const newBoard = [...board];
     merge(newBoard, p);
+    
+    // Validera att griden fortfarande är giltig
+    if (!validateGrid(newBoard)) {
+      console.error('Invalid grid state after merging piece');
+      return;
+    }
+    
     const cleared = clearLines(newBoard);
     
     if (cleared > 0) {
@@ -249,9 +313,14 @@ export default function App() {
     setPoints(0);
     setOver(false);
     setPaused(false);
+    setIsLocked(false);
+    if (lockDelayTimer) {
+      clearTimeout(lockDelayTimer);
+      setLockDelayTimer(null);
+    }
     bag.reset();
     setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
-  }, [bag]);
+  }, [bag, lockDelayTimer]);
 
   // Starta spel
   const startGame = useCallback(() => {

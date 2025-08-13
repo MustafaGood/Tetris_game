@@ -134,6 +134,78 @@ export function collide(grid: Grid, p: Piece): boolean {
   return false;
 }
 
+// Förbättrad kollisionsdetektering - specifika funktioner
+export function collideWithWalls(p: Piece): boolean {
+  const s = shape(p);
+  for (let dy = 0; dy < s.length; dy++) {
+    for (let dx = 0; dx < s[dy].length; dx++) {
+      if (!s[dy][dx]) continue;
+      const x = p.x + dx;
+      if (x < 0 || x >= W) return true;
+    }
+  }
+  return false;
+}
+
+export function collideWithBottom(p: Piece): boolean {
+  const s = shape(p);
+  for (let dy = 0; dy < s.length; dy++) {
+    for (let dx = 0; dx < s[dy].length; dx++) {
+      if (!s[dy][dx]) continue;
+      const y = p.y + dy;
+      if (y >= H) return true;
+    }
+  }
+  return false;
+}
+
+export function collideWithBlocks(grid: Grid, p: Piece): boolean {
+  const s = shape(p);
+  for (let dy = 0; dy < s.length; dy++) {
+    for (let dx = 0; dx < s[dy].length; dx++) {
+      if (!s[dy][dx]) continue;
+      const x = p.x + dx, y = p.y + dy;
+      if (y >= 0 && y < H && x >= 0 && x < W && grid[y][x]) return true;
+    }
+  }
+  return false;
+}
+
+// Kollisionsdetektering i specifika riktningar
+export function canMoveLeft(grid: Grid, p: Piece): boolean {
+  const testPiece = { ...p, x: p.x - 1 };
+  return !collide(grid, testPiece);
+}
+
+export function canMoveRight(grid: Grid, p: Piece): boolean {
+  const testPiece = { ...p, x: p.x + 1 };
+  return !collide(grid, testPiece);
+}
+
+export function canMoveDown(grid: Grid, p: Piece): boolean {
+  const testPiece = { ...p, y: p.y + 1 };
+  return !collide(grid, testPiece);
+}
+
+// Kontrollerar om pjäsen är "landed" (kan inte falla längre)
+export function isLanded(grid: Grid, p: Piece): boolean {
+  const testPiece = { ...p, y: p.y + 1 };
+  return collide(grid, testPiece);
+}
+
+// Säkerställer att inga block överlappar varandra
+export function validateGrid(grid: Grid): boolean {
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const cell = grid[y][x];
+      if (cell !== 0 && (cell < 1 || cell > 7)) {
+        return false; // Ogiltig cell-värde
+      }
+    }
+  }
+  return true;
+}
+
 // Lägger till ett block på spelplanen
 export function merge(grid: Grid, p: Piece): void {
   const s = shape(p);
@@ -161,13 +233,6 @@ export function clearLines(grid: Grid): number {
     }
   }
   return cleared;
-}
-
-// Roterar ett block
-export function rotate(p: Piece, dir: 1 | -1): Piece {
-  const cp = clone(p);
-  cp.r = (cp.r + (dir === 1 ? 1 : -1) + 4) % 4;
-  return cp;
 }
 
 // Beräknar fallhastighet baserat på nivå
@@ -208,4 +273,96 @@ export function getHighestRow(grid: Grid): number {
     }
   }
   return H;
+} 
+
+// Roterar ett block
+export function rotate(p: Piece, dir: 1 | -1): Piece {
+  const cp = clone(p);
+  cp.r = (cp.r + (dir === 1 ? 1 : -1) + 4) % 4;
+  return cp;
+}
+
+// SRS (Super Rotation System) Wall Kick Offsets
+// Format: [fromRotation][toRotation] = [[x1, y1], [x2, y2], ...]
+const SRS_WALL_KICKS: Record<number, Record<number, number[][]>> = {
+  // J, L, S, T, Z pieces (standard SRS)
+  1: {
+    0: [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]], // 1->0
+    2: [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],     // 1->2
+  },
+  2: {
+    1: [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],    // 2->1
+    3: [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],  // 2->3
+  },
+  3: {
+    2: [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]], // 3->2
+    0: [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],     // 3->0
+  },
+  0: {
+    3: [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],    // 0->3
+    1: [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],  // 0->1
+  },
+};
+
+// I-piece specific wall kicks (unique offsets)
+const I_WALL_KICKS: Record<number, Record<number, number[][]>> = {
+  1: {
+    0: [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],   // 1->0
+    2: [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],   // 1->2
+  },
+  2: {
+    1: [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],   // 2->1
+    3: [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],   // 2->3
+  },
+  3: {
+    2: [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],   // 3->2
+    0: [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],   // 3->0
+  },
+  0: {
+    3: [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],   // 0->3
+    1: [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],   // 0->1
+  },
+};
+
+// O-piece doesn't rotate (stays the same)
+const O_WALL_KICKS: Record<number, Record<number, number[][]>> = {
+  0: { 0: [[0, 0]] }, // No rotation needed
+};
+
+// SRS Rotation med Wall Kicks
+export function rotateWithSRS(p: Piece, dir: 1 | -1, grid: Grid): Piece | null {
+  const fromRotation = p.r;
+  const toRotation = (fromRotation + (dir === 1 ? 1 : -1) + 4) % 4;
+  
+  // O-piece doesn't rotate
+  if (p.id === 4) {
+    return p;
+  }
+  
+  // Get appropriate wall kick table
+  let wallKicks: number[][];
+  if (p.id === 1) { // I-piece
+    wallKicks = I_WALL_KICKS[fromRotation][toRotation] || [[0, 0]];
+  } else if (p.id === 4) { // O-piece
+    wallKicks = O_WALL_KICKS[fromRotation][toRotation] || [[0, 0]];
+  } else { // J, L, S, T, Z pieces
+    wallKicks = SRS_WALL_KICKS[fromRotation][toRotation] || [[0, 0]];
+  }
+  
+  // Test each wall kick offset
+  for (const [dx, dy] of wallKicks) {
+    const testPiece: Piece = {
+      id: p.id,
+      r: toRotation,
+      x: p.x + dx,
+      y: p.y + dy
+    };
+    
+    if (!collide(grid, testPiece)) {
+      return testPiece;
+    }
+  }
+  
+  // No valid position found
+  return null;
 } 
