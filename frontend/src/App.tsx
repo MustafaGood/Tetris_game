@@ -61,6 +61,38 @@ function useGameLoop(callback: () => void, isActive: boolean, speed: number) {
   }, [isActive, speed]);
 }
 
+// Custom hook för throttle av tangentbordskontroller
+function useThrottledKeys() {
+  const keyStates = useRef<Set<string>>(new Set());
+  const lastKeyTime = useRef<Record<string, number>>({});
+  const THROTTLE_DELAY = 50; // 50ms mellan upprepningar
+  
+  const isKeyPressed = useCallback((key: string) => {
+    return keyStates.current.has(key);
+  }, []);
+  
+  const shouldProcessKey = useCallback((key: string) => {
+    const now = Date.now();
+    const lastTime = lastKeyTime.current[key] || 0;
+    
+    if (now - lastTime >= THROTTLE_DELAY) {
+      lastKeyTime.current[key] = now;
+      return true;
+    }
+    return false;
+  }, []);
+  
+  const setKeyPressed = useCallback((key: string, pressed: boolean) => {
+    if (pressed) {
+      keyStates.current.add(key);
+    } else {
+      keyStates.current.delete(key);
+    }
+  }, []);
+  
+  return { isKeyPressed, shouldProcessKey, setKeyPressed };
+}
+
 // Huvudkomponenten för spelet
 export default function App() {
   // State-variabler för spelet
@@ -80,6 +112,9 @@ export default function App() {
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
+  
+  // Throttle-hook för tangentbordskontroller
+  const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
 
   // Fyller "next" med 5 block vid start
   useEffect(() => {
@@ -122,7 +157,19 @@ export default function App() {
   const hardDrop = useCallback(() => {
     if (over || paused) return;
     let p = { ...cur };
-    while (!collide(board, { ...p, y: p.y + 1 })) p.y++;
+    let dropDistance = 0;
+    
+    // Räkna hur långt pjäsen faller
+    while (!collide(board, { ...p, y: p.y + 1 })) {
+      p.y++;
+      dropDistance++;
+    }
+    
+    // Lägg till drop-bonus (2 poäng per rad)
+    if (dropDistance > 0) {
+      setPoints(prev => prev + (dropDistance * 2));
+    }
+    
     lockPiece(p);
   }, [cur, board, over, paused]);
 
@@ -255,51 +302,63 @@ export default function App() {
     }
   }, [backendConnected]);
 
-  // Tangentbordskontroller
+  // Tangentbordskontroller med throttle
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    function onKeyDown(e: KeyboardEvent) {
       if (gameState !== 'playing' && gameState !== 'paused') return;
       
-      switch (e.code) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          move(-1);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          move(1);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          softDrop();
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          rotateCur(1);
-          break;
-        case 'Space':
-          e.preventDefault();
-          hardDrop();
-          break;
-        case 'KeyC':
-          e.preventDefault();
-          holdPiece();
-          break;
-        case 'KeyP':
-        case 'Escape':
-          e.preventDefault();
-          pauseGame();
-          break;
-        case 'KeyR':
-          e.preventDefault();
-          reset();
-          break;
+      setKeyPressed(e.code, true);
+      
+      if (shouldProcessKey(e.code)) {
+        switch (e.code) {
+          case 'ArrowLeft':
+            e.preventDefault();
+            move(-1);
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            move(1);
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            softDrop();
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            rotateCur(1);
+            break;
+          case 'Space':
+            e.preventDefault();
+            hardDrop();
+            break;
+          case 'KeyC':
+            e.preventDefault();
+            holdPiece();
+            break;
+          case 'KeyP':
+          case 'Escape':
+            e.preventDefault();
+            pauseGame();
+            break;
+          case 'KeyR':
+            e.preventDefault();
+            reset();
+            break;
+        }
       }
     }
 
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [gameState, move, softDrop, rotateCur, hardDrop, holdPiece, pauseGame, reset]);
+    function onKeyUp(e: KeyboardEvent) {
+      setKeyPressed(e.code, false);
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [gameState, move, softDrop, rotateCur, hardDrop, holdPiece, pauseGame, reset, setKeyPressed, shouldProcessKey]);
 
   // Spelloop med requestAnimationFrame
   useGameLoop(() => {
