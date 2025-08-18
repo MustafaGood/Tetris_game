@@ -49,10 +49,10 @@ import ParticleEffect from './components/ParticleEffect';
 import { useSound } from './hooks/useSound';
 import { useTheme } from './contexts/ThemeContext';
 
-// UI States för olika skärmar (separat från GameState)
+
 type UIState = 'menu' | 'help' | 'info' | 'highscores' | 'settings';
 
-// Custom hook för requestAnimationFrame med kontrollerad hastighet
+
 function useGameLoop(callback: () => void, isActive: boolean, speed: number) {
   const savedCallback = useRef(callback);
   const lastTimeRef = useRef<number>(0);
@@ -90,11 +90,11 @@ function useGameLoop(callback: () => void, isActive: boolean, speed: number) {
   }, [isActive, speed]);
 }
 
-// Custom hook för throttle av tangentbordskontroller
+
 function useThrottledKeys() {
   const keyStates = useRef<Set<string>>(new Set());
   const lastKeyTime = useRef<Record<string, number>>({});
-  const THROTTLE_DELAY = 50; // 50ms mellan upprepningar
+  const THROTTLE_DELAY = 50;
   
   const isKeyPressed = useCallback((key: string) => {
     return keyStates.current.has(key);
@@ -122,9 +122,9 @@ function useThrottledKeys() {
   return { isKeyPressed, shouldProcessKey, setKeyPressed };
 }
 
-// Huvudkomponenten för spelet
+
 export default function App() {
-  // State-variabler för spelet
+
   const [gameState, setGameState] = useState<GameState>(GameState.START);
   const [uiState, setUiState] = useState<UIState>('menu');
   const bag = useMemo(() => new Bag(), []);
@@ -144,41 +144,41 @@ export default function App() {
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(false);
   
-  // Lock delay system
+
   const [lockDelayTimer, setLockDelayTimer] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
-  const LOCK_DELAY_MS = 500; // 500ms lock delay
+  const LOCK_DELAY_MS = 500;
   
-  // Line clear system
+
   const [isClearingLines, setIsClearingLines] = useState(false);
-  const [lastTetris, setLastTetris] = useState(false); // För Back-to-Back
+  const [lastTetris, setLastTetris] = useState(false);
   const [lineClearAnimation, setLineClearAnimation] = useState<number[]>([]);
   
-  // Combo system
+
   const [combo, setCombo] = useState(0);
   const [lastMove, setLastMove] = useState<string>('');
   
-  // Settings
+
   const [ghostPieceEnabled, setGhostPieceEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [startLevel, setStartLevel] = useState(1);
   
-  // Theme
+
   const { theme, setTheme } = useTheme();
   
-  // Particle effects
+
   const [particleEffect, setParticleEffect] = useState<{
     isActive: boolean;
     position: { x: number; y: number };
   }>({ isActive: false, position: { x: 0, y: 0 } });
   
-  // Throttle-hook för tangentbordskontroller
+
   const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
   
-  // Ljud-hook
+
   const sounds = useSound(soundEnabled);
 
-  // Initialize audio when user interacts
+
   const initializeAudio = useCallback(async () => {
     try {
       await sounds.resumeAudioContext();
@@ -187,39 +187,37 @@ export default function App() {
     }
   }, [sounds]);
 
-  // Fyller "next" med 5 block vid start
+
   useEffect(() => {
     setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
   }, [bag]);
 
-  // Testar backend-anslutning vid start
+
   useEffect(() => {
     testConnection().then(setBackendConnected).catch(() => setBackendConnected(false));
   }, []);
 
-  // Laddar leaderboard när spelet är över
+
   useEffect(() => { 
     if (over) {
       if (backendConnected) {
         fetchScores(10).then(setScores).catch(() => {});
       }
-      // Ladda lokala highscores
       setLocalScores(getLocalScores());
     }
   }, [over, backendConnected]);
 
-  // Laddar highscores när man går till highscores-sidan
+
   useEffect(() => { 
     if (uiState === 'highscores') {
       if (backendConnected) {
         fetchScores(100).then(setScores).catch(() => {});
       }
-      // Ladda lokala highscores
       setLocalScores(getLocalScores());
     }
   }, [uiState, backendConnected]);
 
-  // Skapar ett nytt block
+
   const newPiece = useCallback((fromHold?: number) => {
     const id = fromHold ?? nextIds[0];
     const rest = fromHold ? nextIds : nextIds.slice(1);
@@ -232,46 +230,44 @@ export default function App() {
     return p;
   }, [nextIds, bag]);
 
-  // Hård fall (hard drop)
+
   const hardDrop = useCallback(() => {
     if (over || paused || isClearingLines) return;
     let p = { ...cur };
     let dropDistance = 0;
     
-    // Räkna hur långt pjäsen faller
+
     while (!collide(board, { ...p, y: p.y + 1 })) {
       p.y++;
       dropDistance++;
     }
     
-    // Lägg till drop-bonus med korrekt poängberäkning
+
     if (dropDistance > 0) {
       const dropScore = calculateHardDropScore(dropDistance, level);
       setPoints(prev => prev + dropScore);
-      // Spela drop-ljud
+
       sounds.playDrop();
     }
     
     lockPiece(p);
   }, [cur, board, over, paused, isClearingLines, level, sounds]);
 
-  // Mjuk fall (soft drop) med lock delay och poäng
+
   const softDrop = useCallback(() => {
     if (over || paused || isClearingLines) return;
     const p = { ...cur, y: cur.y + 1 };
     if (!collide(board, p)) {
       setCur(p);
-      // Lägg till soft drop poäng
+
       const dropScore = calculateSoftDropScore(1, level);
       setPoints(prev => prev + dropScore);
-      // Reset lock delay timer när pjäsen rör sig
       if (lockDelayTimer) {
         clearTimeout(lockDelayTimer);
         setLockDelayTimer(null);
       }
       setIsLocked(false);
     } else {
-      // Pjäsen kan inte falla längre - starta lock delay
       if (!isLocked && !lockDelayTimer) {
         const timer = setTimeout(() => {
           lockPiece(cur);
@@ -284,13 +280,12 @@ export default function App() {
     }
   }, [cur, board, over, paused, isClearingLines, lockDelayTimer, isLocked, level]);
 
-  // Flytta block med lock delay reset
+
   const move = useCallback((dx: number) => {
     if (over || paused || isClearingLines) return;
     const p = { ...cur, x: cur.x + dx };
     if (!collide(board, p)) {
       setCur(p);
-      // Reset lock delay timer när pjäsen rör sig
       if (lockDelayTimer) {
         clearTimeout(lockDelayTimer);
         setLockDelayTimer(null);
@@ -299,31 +294,30 @@ export default function App() {
     }
   }, [cur, board, over, paused, isClearingLines, lockDelayTimer]);
 
-  // Rotera block med SRS (Super Rotation System) och lock delay reset
+
   const rotateCur = useCallback((dir: 1 | -1) => {
     if (over || paused || isClearingLines) return;
     
-    // Använd SRS med wall kicks
+
     const rotatedPiece = rotateWithSRS(cur, dir, board);
     
     if (rotatedPiece) {
       setCur(rotatedPiece);
-      setLastMove('rotate'); // Spara sista rörelse för T-spin detection
-      // Reset lock delay timer när pjäsen roteras
+      setLastMove('rotate');
       if (lockDelayTimer) {
         clearTimeout(lockDelayTimer);
         setLockDelayTimer(null);
       }
       setIsLocked(false);
-      // Spela rotationsljud
+
       sounds.playRotate();
     }
-    // Om rotation misslyckas (null returneras) görs ingenting
+
   }, [cur, board, over, paused, isClearingLines, lockDelayTimer, sounds]);
 
-  // Lås block på plats med förbättrad line clear
+
   const lockPiece = useCallback((p: Piece) => {
-    // Validera att pjäsen inte överlappar med befintliga block
+
     if (collide(board, p)) {
       console.warn('Attempting to lock piece that collides with board');
       return;
@@ -332,44 +326,44 @@ export default function App() {
     const newBoard = [...board];
     merge(newBoard, p);
     
-    // Validera att griden fortfarande är giltig
+
     if (!validateGrid(newBoard)) {
       console.error('Invalid grid state after merging piece');
       return;
     }
     
-    // Upptäck fulla rader
+
     const fullRows = getFullRows(newBoard);
     
     if (fullRows.length > 0) {
-      // Blockera input under line clear
+
       setIsClearingLines(true);
       
-      // Starta animation
+
       setLineClearAnimation(fullRows);
       
-      // Vänta lite för animation, sedan rensa raderna
+
       setTimeout(() => {
-        // Rensa raderna
+
         clearRows(newBoard, fullRows);
         
-        // T-Spin detection
+
         const isTSpinClear = isTSpin(fullRows.length, p.id, lastMove, board, p);
         
-        // Beräkna poäng med alla bonusar
+
         const isTetrisClear = isTetris(fullRows.length);
         const isBackToBack = lastTetris && (isTetrisClear || isTSpinClear);
         const scoreGain = calculateTotalScore(fullRows.length, level, isBackToBack, isTSpinClear, combo);
         
-        // Uppdatera combo
+
         const newCombo = combo + 1;
         setCombo(newCombo);
         
-        // Uppdatera state
+
         const newLines = lines + fullRows.length;
         const newLevel = Math.floor(newLines / 10) + 1;
         
-        // Spela ljud baserat på typ av clear
+
         if (isTSpinClear) {
           sounds.playTSpin();
         } else if (isTetrisClear) {
@@ -378,7 +372,7 @@ export default function App() {
           sounds.playLineClear();
         }
         
-        // Spela level up ljud om nivån ökar
+
         if (newLevel > level) {
           sounds.playLevelUp();
         }
@@ -388,20 +382,20 @@ export default function App() {
         setPoints(prev => prev + scoreGain);
         setLastTetris(isTetrisClear || isTSpinClear);
         
-        // Trigger particle effect
+
         setParticleEffect({
           isActive: true,
           position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 }
         });
         
-        // Sluta animation
+
         setLineClearAnimation([]);
         setIsClearingLines(false);
         
-        // Uppdatera board
+
         setBoard([...newBoard]);
         
-        // Kontrollera game over
+
         if (isGameOver(newBoard)) {
           sounds.playGameOver();
           setState(GameState.GAME_OVER);
@@ -409,13 +403,12 @@ export default function App() {
         }
         
         newPiece();
-      }, 300); // 300ms animation
+      }, 300);
     } else {
-      // Inga rader att rensa - reset combo
       setCombo(0);
       setBoard(newBoard);
       
-      // Kontrollera game over
+
       if (isGameOver(newBoard)) {
         sounds.playGameOver();
         setState(GameState.GAME_OVER);
@@ -426,7 +419,7 @@ export default function App() {
     }
   }, [board, lines, level, lastTetris, combo, lastMove, newPiece, sounds]);
 
-  // Håll-funktion
+
   const holdPiece = useCallback(() => {
     if (!canHold || over || paused) return;
     
@@ -441,7 +434,7 @@ export default function App() {
     setCanHold(false);
   }, [hold, cur, canHold, over, paused, newPiece]);
 
-  // Sound control functions
+
   const handleToggleMusic = useCallback(() => {
     sounds.toggleMusic();
   }, [sounds]);
@@ -454,18 +447,13 @@ export default function App() {
     setTheme(newTheme);
   }, [setTheme]);
 
-  // Återställ spelet
+
   const reset = useCallback(() => {
-    // Stop background music when resetting
-    if (sounds.isMusicPlaying) {
-      sounds.stopBackgroundMusic();
-    }
-    
     setBoard(emptyGrid());
     setCur(spawn(bag));
     setHold(null);
     setCanHold(true);
-    setLevel(startLevel); // Använd startnivå istället för alltid nivå 1
+    setLevel(startLevel);
     setLines(0);
     setPoints(0);
     setOver(false);
@@ -482,24 +470,24 @@ export default function App() {
     }
     bag.reset();
     setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
-  }, [bag, lockDelayTimer, startLevel, sounds]);
+  }, [bag, lockDelayTimer, startLevel]);
 
-  // State transition funktion med validering
+
   const setState = useCallback((newState: GameState) => {
     const validTransition = transitionState(gameState, newState, (from, to) => {
       console.log(`State transition: ${from} -> ${to}`);
       
-      // Hantera specifika state transitions
+
       switch (to) {
         case GameState.PLAYING:
-          if (from === GameState.START) {
-            reset(); // Nollställ spelet vid start
+          if (from === GameState.START || from === GameState.GAME_OVER) {
+            reset();
           }
           setPaused(false);
           break;
         case GameState.PAUSE:
           setPaused(true);
-          // Nollställ lock delay timer vid paus
+
           if (lockDelayTimer) {
             clearTimeout(lockDelayTimer);
             setLockDelayTimer(null);
@@ -509,11 +497,7 @@ export default function App() {
         case GameState.GAME_OVER:
           setOver(true);
           setPaused(false);
-          // Stop background music when game over
-          if (sounds.isMusicPlaying) {
-            sounds.stopBackgroundMusic();
-          }
-          // Spara till LocalStorage om det är en highscore
+
           if (isLocalHighscore(points)) {
             saveLocalScore({
               playerName: playerName || 'Anonym',
@@ -523,7 +507,7 @@ export default function App() {
               date: new Date().toISOString()
             });
           }
-          // Stoppa alla timers
+
           if (lockDelayTimer) {
             clearTimeout(lockDelayTimer);
             setLockDelayTimer(null);
@@ -532,11 +516,7 @@ export default function App() {
         case GameState.START:
           setPaused(false);
           setOver(false);
-          // Stop background music when going to start
-          if (sounds.isMusicPlaying) {
-            sounds.stopBackgroundMusic();
-          }
-          // Nollställ alla timers
+
           if (lockDelayTimer) {
             clearTimeout(lockDelayTimer);
             setLockDelayTimer(null);
@@ -548,41 +528,31 @@ export default function App() {
     if (validTransition) {
       setGameState(validTransition);
     }
-  }, [gameState, reset, lockDelayTimer, sounds, saveLocalScore, points]);
+  }, [gameState, reset, lockDelayTimer]);
 
-  // Starta spel
+
   const startGame = useCallback(async () => {
-    // Initialize audio when starting game
+
     await initializeAudio();
-    
-    // Start background music when game starts
+
     if (sounds.musicEnabled) {
       sounds.playBackgroundMusic();
     }
-    
     setState(GameState.PLAYING);
   }, [setState, initializeAudio, sounds]);
 
-  // Pausa spel
+
   const pauseGame = useCallback(() => {
     if (gameState === GameState.PLAYING) {
-      // Pause background music when pausing game
-      if (sounds.isMusicPlaying) {
-        sounds.stopBackgroundMusic();
-      }
       setState(GameState.PAUSE);
     } else if (gameState === GameState.PAUSE) {
-      // Resume background music when resuming game
-      if (sounds.musicEnabled) {
-        sounds.playBackgroundMusic();
-      }
       setState(GameState.PLAYING);
     }
-  }, [gameState, setState, sounds]);
+  }, [gameState, setState]);
 
 
 
-  // Spara poäng
+
   const saveScore = useCallback(async (name: string) => {
     if (!backendConnected) return false;
     
@@ -594,7 +564,7 @@ export default function App() {
     });
     
     if (result.success) {
-      // Ladda uppdaterade highscores
+
       fetchScores(10).then(setScores).catch(() => {});
       return true;
     }
@@ -602,7 +572,7 @@ export default function App() {
     return false;
   }, [points, level, lines, backendConnected]);
 
-  // Ta bort poäng
+
   const handleDeleteScore = useCallback(async (id: number) => {
     if (!backendConnected) return;
     
@@ -612,16 +582,16 @@ export default function App() {
     }
   }, [backendConnected]);
 
-  // Tangentbordskontroller med throttle och state-validering
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      // Kontrollera om input är tillåten i aktuellt state
+
       if (!isInputAllowed(gameState, e.code)) {
         return;
       }
       
       setKeyPressed(e.code, true);
-      initializeAudio(); // Initialize audio on key down
+      initializeAudio();
       
       if (shouldProcessKey(e.code)) {
         switch (e.code) {
@@ -662,7 +632,7 @@ export default function App() {
           case 'Escape':
             e.preventDefault();
             if (gameState === GameState.PLAYING) {
-              // Från PLAYING, gå till START (avsluta spel)
+
               setState(GameState.START);
               setUiState('menu');
             } else if (gameState === GameState.PAUSE) {
@@ -699,14 +669,14 @@ export default function App() {
     };
   }, [gameState, move, softDrop, rotateCur, hardDrop, holdPiece, pauseGame, reset, setKeyPressed, shouldProcessKey, initializeAudio]);
 
-  // Spelloop med requestAnimationFrame
+
   useGameLoop(() => {
     if (gameState === GameState.PLAYING) {
       softDrop();
     }
   }, gameState === GameState.PLAYING, tickSpeed(level));
 
-  // Renderar olika skärmar baserat på gameState och uiState
+
   if (gameState === GameState.START && uiState === 'menu') {
     return (
       <>
@@ -731,7 +701,7 @@ export default function App() {
           }}
           onExit={() => {
             if (confirm('Är du säker på att du vill avsluta spelet?')) {
-              // Visa instruktioner för att stänga fönstret
+
               alert('För att stänga spelet:\n\n• Tryck Ctrl+W (Windows/Linux) eller Cmd+W (Mac)\n• Eller stäng fliken/fönstret manuellt\n\nTack för att du spelade Tetris! 🎮');
             }
           }}
@@ -741,70 +711,160 @@ export default function App() {
   }
 
   if (gameState === GameState.PLAYING || gameState === GameState.PAUSE) {
-  return (
-        <>
-          <AnimatedBackground />
-          <div className="min-h-screen p-4 relative z-10">
-            <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center game-container">
-              {/* Spelplan */}
-              <div className="flex-shrink-0 game-board-container relative">
-                <GameBoard grid={board} currentPiece={cur} gameState={gameState} ghostPieceEnabled={ghostPieceEnabled} />
-                
-                {/* Particle Effect */}
-                <ParticleEffect
-                  isActive={particleEffect.isActive}
-                  position={particleEffect.position}
-                  onComplete={() => setParticleEffect({ isActive: false, position: { x: 0, y: 0 } })}
-                />
-                
-                {/* Paus-overlay */}
-                {gameState === GameState.PAUSE && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                    <div className="bg-gray-800 p-8 rounded-xl border border-gray-600 text-center">
-                      <h2 className="text-2xl font-bold text-white mb-4">Pausat</h2>
-                      <p className="text-gray-300 mb-4">Tryck P eller Esc för att fortsätta</p>
-                                             <button 
-                         onClick={async () => {
-                           // Först gå till START state, sedan till meny
-                           await initializeAudio();
-                           setState(GameState.START);
-                           setUiState('menu');
-                         }}
-                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
-                       >
-                         Avsluta
-                       </button>
-                    </div>
-                  </div>
-                )}
-        </div>
-
-              {/* Sidopanel */}
-              <div className="side-panel-container">
-                <SidePanel 
-                next={nextIds} 
-                hold={hold} 
-                level={level} 
-                lines={lines} 
-                points={points} 
-                combo={combo}
-                scores={scores}
-                localScores={localScores}
-                backendConnected={backendConnected}
+    return (
+      <>
+        <AnimatedBackground />
+        <div className="min-h-screen p-4 relative z-10">
+          <div className="max-w-6xl mx-auto flex gap-8 items-start justify-center game-container">
+            
+            {/* Spelbräde */}
+            <div className="flex-shrink-0 game-board-container relative">
+              <GameBoard
+                grid={board}
+                currentPiece={cur}
+                gameState={gameState}
                 ghostPieceEnabled={ghostPieceEnabled}
-                onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
-                                  onQuit={async () => {
-                    await initializeAudio();
-                    setState(GameState.START);
-                    setUiState('menu');
-                  }}
-                />
+              />
+
+              <ParticleEffect
+                isActive={particleEffect.isActive}
+                position={particleEffect.position}
+                onComplete={() =>
+                  setParticleEffect({ isActive: false, position: { x: 0, y: 0 } })
+                }
+              />
+
+              {gameState === GameState.PAUSE && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
+                  <div className="bg-gray-800 p-8 rounded-xl border border-gray-600 text-center">
+                    <h2 className="text-2xl font-bold text-white mb-4">Pausat</h2>
+                    <p className="text-gray-300 mb-4">
+                      Tryck P eller Esc för att fortsätta
+                    </p>
+                    <button
+                      onClick={async () => {
+                        await initializeAudio();
+                        setState(GameState.START);
+                        setUiState("menu");
+                      }}
+                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Avsluta
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3x3 Infopanel */}
+            <div className="grid grid-cols-3 grid-rows-2 gap-4 w-[600px] text-white">
+              {/* Håll Panel */}
+              <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
+                <h3 className="font-bold text-green-400 mb-2">Håll</h3>
+                <div className="text-center">
+                  {hold !== null ? (
+                    <div className="text-2xl">📦</div>
+                  ) : (
+                    <p className="text-gray-400">(Tomt)</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Kommande Panel */}
+              <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
+                <h3 className="font-bold text-blue-400 mb-2">Kommande</h3>
+                <div className="text-center">
+                  <p className="text-sm text-gray-300">{nextIds.length} brickor</p>
+                  <div className="flex justify-center gap-1 mt-2">
+                    {nextIds.slice(0, 3).map((id, index) => (
+                      <div key={index} className="w-4 h-4 bg-gray-600 rounded-sm"></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Statistik Panel */}
+              <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
+                <h3 className="font-bold text-yellow-400 mb-2">Statistik</h3>
+                <div className="space-y-1 text-sm">
+                  <p>Nivå: <span className="text-white font-bold">{level}</span></p>
+                  <p>Rader: <span className="text-white font-bold">{lines}</span></p>
+                  <p>Poäng: <span className="text-white font-bold">{formatScore(points)}</span></p>
+                  {combo > 0 && (
+                    <p className="text-orange-400">Combo: {combo}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Inställningar Panel */}
+              <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
+                <h3 className="font-bold text-purple-400 mb-2">Inställningar</h3>
+                <div className="space-y-1 text-sm">
+                  <p>Spökbricka: 
+                    <span className={`ml-1 ${ghostPieceEnabled ? 'text-green-400' : 'text-red-400'}`}>
+                      {ghostPieceEnabled ? 'På' : 'Av'}
+                    </span>
+                  </p>
+                  <p>Ljud: 
+                    <span className={`ml-1 ${soundEnabled ? 'text-green-400' : 'text-red-400'}`}>
+                      {soundEnabled ? 'På' : 'Av'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Server Panel */}
+              <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
+                <h3 className="font-bold text-cyan-400 mb-2">Server</h3>
+                <div className="text-center">
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                    backendConnected 
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full ${
+                      backendConnected ? 'bg-green-400' : 'bg-red-400'
+                    }`}></div>
+                    {backendConnected ? 'Ansluten' : 'Frånkopplad'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Topplista Panel */}
+              <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
+                <h3 className="font-bold text-pink-400 mb-2">Topplista</h3>
+                <div className="space-y-1 text-sm">
+                  {scores.length > 0 ? (
+                    scores.slice(0, 3).map((score, index) => (
+                      <div key={score.id} className="flex justify-between">
+                        <span className="text-gray-300">{index + 1}. {score.name}</span>
+                        <span className="text-white font-bold">{formatScore(score.points)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">1. ok</span>
+                        <span className="text-white font-bold">3,524</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">2. ok</span>
+                        <span className="text-white font-bold">2,868</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">3. Anonym</span>
+                        <span className="text-white font-bold">890</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </>
-      );
-    }
+        </div>
+      </>
+    );
+  }
 
     if (gameState === GameState.GAME_OVER) {
   return (
@@ -906,7 +966,7 @@ export default function App() {
               <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
               <h2 className="text-3xl font-bold text-white mb-6 text-center">🏆 Highscores</h2>
               
-              {/* Backend Highscores */}
+
               {backendConnected && (
                 <div className="mb-8">
                   <h3 className="text-xl font-bold text-white mb-4">🌐 Online Highscores</h3>
@@ -942,7 +1002,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* Local Highscores */}
+
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-white mb-4">💾 Lokala Highscores</h3>
                 {localScores.length > 0 ? (
@@ -1101,7 +1161,7 @@ export default function App() {
       );
     }
 
-    // Fallback - visa meny
+
     return (
       <>
         <AnimatedBackground />
@@ -1125,7 +1185,7 @@ export default function App() {
           }}
           onExit={() => {
             if (confirm('Är du säker på att du vill avsluta spelet?')) {
-              // Visa instruktioner för att stänga fönstret
+
               alert('För att stänga spelet:\n\n• Tryck Ctrl+W (Windows/Linux) eller Cmd+W (Mac)\n• Eller stäng fliken/fönstret manuellt\n\nTack för att du spelade Tetris! 🎮');
             }
           }}
@@ -1134,7 +1194,7 @@ export default function App() {
     );
   }
 
-// Hjälpkomponent för kontrolllista
+
 function ControlItem({ keyName, action, description }: { 
   keyName: string; 
   action: string; 
