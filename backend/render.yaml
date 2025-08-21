@@ -1,0 +1,42 @@
+services:
+  - type: web
+    # Namn på tjänsten
+    name: tetris-backend
+    # Miljö: node.js
+    env: node
+    # Kommando som körs vid build (installerar beroenden)
+    buildCommand: npm install
+    # Startkommando för applikationen
+    startCommand: node server-mongo.js
+    # Hälsokontrollväg som render/host kommer anropa
+    healthCheckPath: /api/health
+    # Miljövariabler som sätts i miljön
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: SCORE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: SCORE_LIMIT_MAX_REQUESTS
+        value: 10
+      - key: GAME_SEED_EXPIRY_MS
+        value: 300000
+      - key: SCORE_TOLERANCE_PERCENT
+        value: 30
+      - key: CORS_ORIGIN
+        # Ange frontend-domäner separerade med kommatecken
+        value: https://your-frontend-domain.com
+      - key: MONGODB_URI
+        # Sync=false innebär att värdet inte läckas till repo
+        sync: false
+    # Automatisk deploy från angiven branch
+    autoDeploy: true
+    branch: main
+    plan: starter
