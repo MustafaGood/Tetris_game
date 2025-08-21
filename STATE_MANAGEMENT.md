@@ -1,26 +1,28 @@
-# Tetris Game State Management
+# State-hantering för Tetris
+
+<!-- Kommentar: Denna fil beskriver frontendens state machine, dess övergångar och hur timers/input hanteras. -->
 
 ## Översikt
 
-Detta dokument beskriver den nya state-hanteringen för Tetris-spelet som implementerar en robust och validerad state machine.
+Dokumentet beskriver en robust och testbar state-machine för spelet. Det förklarar tillåtna state-övergångar, input-behörigheter per state, timer-hantering och hur frontend bör interagera med backend vid t.ex. poänginlämning.
 
-## GameState Enum
+## GameState
 
 ```typescript
 export enum GameState {
-  START = 'START',           // Titelskärm eller "Press Start"
-  PLAYING = 'PLAYING',       // Normalt spel
-  PAUSE = 'PAUSE',          // Spelet fryst, väntar på återupptagning
-  GAME_OVER = 'GAME_OVER'   // Slutskärm
+  START = 'START',
+  PLAYING = 'PLAYING',
+  PAUSE = 'PAUSE',
+  GAME_OVER = 'GAME_OVER'
 }
 ```
 
-## State Transitions
+<!-- Kommentar: Håll enumen oförändrad så att komponenter och tester kan dela typen. -->
 
-### Tillåtna övergångar
+## Tillåtna övergångar
 
 ```typescript
-ALLOWED_TRANSITIONS: Record<GameState, GameState[]> = {
+const ALLOWED_TRANSITIONS: Record<GameState, GameState[]> = {
   [GameState.START]: [GameState.PLAYING],
   [GameState.PLAYING]: [GameState.PAUSE, GameState.GAME_OVER, GameState.START],
   [GameState.PAUSE]: [GameState.PLAYING, GameState.START],
@@ -28,53 +30,38 @@ ALLOWED_TRANSITIONS: Record<GameState, GameState[]> = {
 };
 ```
 
-### State Transition Flöde
+Grafiskt flöde (förenklat):
 
-```
 START → PLAYING → PAUSE → PLAYING
-  ↓    ↕         ↓
-GAME_OVER ← GAME_OVER
-```
+  ↓                ↓
+  →----------- GAME_OVER
 
-## Input Permissions
+<!-- Kommentar: Ändra ALLOWED_TRANSITIONS om nya navigationsvägar behövs (t.ex. direkt avslut). -->
 
-### START State
-- **Tillåtna inputs**: `Enter`, `Space`
-- **Funktion**: Starta spel
+## Input-behörigheter per state
 
-### PLAYING State
-- **Tillåtna inputs**: `ArrowLeft`, `ArrowRight`, `ArrowDown`, `ArrowUp`, `Space`, `KeyC`, `KeyP`, `Escape`, `KeyR`
-- **Funktion**: Full spelkontroll
-- **Escape**: Avsluta spel och gå tillbaka till meny
+- START: `Enter`, `Space` — starta spelet
+- PLAYING: `ArrowLeft`, `ArrowRight`, `ArrowDown`, `ArrowUp`, `Space`, `KeyC`, `KeyP`, `Escape`, `KeyR` — full spelkontroll
+- PAUSE: `KeyP`, `Escape`, `Enter` — pausa/återuppta och navigera
+- GAME_OVER: `Enter`, `Space`, `KeyR` — starta om eller gå till meny
 
-### PAUSE State
-- **Tillåtna inputs**: `KeyP`, `Escape`, `Enter`
-- **Funktion**: Pausa/resume och navigering
+Funktionen `isInputAllowed(state, key)` används för att validera inputs innan de bearbetas.
 
-### GAME_OVER State
-- **Tillåtna inputs**: `Enter`, `Space`, `KeyR`
-- **Funktion**: Restart och meny-navigering
-
-## Implementation
-
-### setState Funktion
+## setState — implementationsexempel
 
 ```typescript
 const setState = useCallback((newState: GameState) => {
   const validTransition = transitionState(gameState, newState, (from, to) => {
     console.log(`State transition: ${from} -> ${to}`);
-    
-    // Hantera specifika state transitions
     switch (to) {
       case GameState.PLAYING:
         if (from === GameState.START) {
-          reset(); // Nollställ spelet vid start
+          reset();
         }
         setPaused(false);
         break;
       case GameState.PAUSE:
         setPaused(true);
-        // Nollställ lock delay timer vid paus
         if (lockDelayTimer) {
           clearTimeout(lockDelayTimer);
           setLockDelayTimer(null);
@@ -84,7 +71,6 @@ const setState = useCallback((newState: GameState) => {
       case GameState.GAME_OVER:
         setOver(true);
         setPaused(false);
-        // Stoppa alla timers
         if (lockDelayTimer) {
           clearTimeout(lockDelayTimer);
           setLockDelayTimer(null);
@@ -93,7 +79,6 @@ const setState = useCallback((newState: GameState) => {
       case GameState.START:
         setPaused(false);
         setOver(false);
-        // Nollställ alla timers
         if (lockDelayTimer) {
           clearTimeout(lockDelayTimer);
           setLockDelayTimer(null);
@@ -101,22 +86,22 @@ const setState = useCallback((newState: GameState) => {
         break;
     }
   });
-  
+
   if (validTransition) {
     setGameState(validTransition);
   }
 }, [gameState, reset, lockDelayTimer]);
 ```
 
-### Validering
+<!-- Kommentar: setState centraliserar timers och side-effects så att komponenterna förblir rena. -->
+
+## Valideringshjälpare
 
 ```typescript
-// Kontrollera om transition är tillåten
 export function canTransition(from: GameState, to: GameState): boolean {
   return ALLOWED_TRANSITIONS[from]?.includes(to) || false;
 }
 
-// Validera state transition
 export function validateStateTransition(from: GameState, to: GameState): boolean {
   if (!canTransition(from, to)) {
     console.warn(`Invalid state transition: ${from} -> ${to}`);
@@ -125,41 +110,26 @@ export function validateStateTransition(from: GameState, to: GameState): boolean
   return true;
 }
 
-// Input validering
 export function isInputAllowed(state: GameState, key: string): boolean {
   return INPUT_PERMISSIONS[state]?.includes(key) || false;
 }
 ```
 
-## Visual Feedback
+## Visual feedback
 
-### State Overlay
+GameBoard visar overlay för aktuellt state:
 
-GameBoard-komponenten visar nu en overlay som indikerar aktuellt state:
+- START: instruktion att börja
+- PAUSE: tydlig paus-indikator
+- GAME_OVER: game over och statistik
 
-- **START**: "Tryck Start för att börja" (blå)
-- **PAUSE**: "PAUSAT" (gul)
-- **GAME_OVER**: "GAME OVER" (röd)
+Overlay-styling hanteras i komponenterna (t.ex. `GameBoard.tsx`) och bör hållas separerad från state-logiken.
 
-### Paus Overlay
+## Timers och spelloop
 
-När spelet är pausat visas en overlay med:
-- Mörkläggning av spelplanen
-- Tydlig "Pausat" text
-- Instruktioner för att fortsätta
+- Lock delay-timern nollställs vid övergång till `PAUSE`, `GAME_OVER` och `START`.
+- Spelloopen kör uppdateringar endast när `gameState === GameState.PLAYING`:
 
-## Timer Management
-
-### Lock Delay Timer
-
-Lock delay timern nollställs automatiskt vid:
-- State transition till PAUSE
-- State transition till GAME_OVER
-- State transition till START
-
-### Spelloop
-
-Spelloopen körs endast när `gameState === GameState.PLAYING`:
 ```typescript
 useGameLoop(() => {
   if (gameState === GameState.PLAYING) {
@@ -170,86 +140,59 @@ useGameLoop(() => {
 
 ## Tester
 
-### State Transition Tester
+Enhetstester täcker state-övergångar och input-permission:
 
 ```typescript
 test('should allow valid state transitions', () => {
   expect(canTransition(GameState.START, GameState.PLAYING)).toBe(true);
   expect(canTransition(GameState.PLAYING, GameState.PAUSE)).toBe(true);
-  // ...
 });
-```
 
-### Input Permission Tester
-
-```typescript
 test('should allow correct inputs for each state', () => {
   expect(isInputAllowed(GameState.START, 'Enter')).toBe(true);
   expect(isInputAllowed(GameState.START, 'ArrowLeft')).toBe(false);
-  // ...
 });
 ```
 
-## Fördelar med den nya implementationen
+## Fördelar
 
-1. **Validerade transitions**: Endast tillåtna state-övergångar är möjliga
-2. **Tydlig input-kontroll**: Varje state har definierade tillåtna inputs
-3. **Automatisk timer-hantering**: Timers nollställs korrekt vid state-övergångar
-4. **Visual feedback**: Tydlig indikation av aktuellt state
-5. **Testbar kod**: Omfattande tester för state-logiken
-6. **Förhindrar buggar**: Ogiltiga state-övergångar och inputs blockeras
+- Validerade övergångar minskar buggar
+- Tydlig inputkontroll per state
+- Centraliserad timer-hantering
+- Bra testbarhet och enklare felsökning
 
-## Problemlösning
+## Vanliga problem och lösningar
 
-### Vanliga state transition problem
+1) Invalid state transition
+- Kontrollera `ALLOWED_TRANSITIONS` och loggarna
 
-1. **"Invalid state transition: PLAYING -> START"**
-   - **Orsak**: Försök att gå från PLAYING till START utan att gå via PAUSE först
-   - **Lösning**: Uppdatera ALLOWED_TRANSITIONS för att tillåta PLAYING -> START
-   - **Användning**: När spelaren vill avsluta spelet direkt från PLAYING state
+2) Input blockeras i fel state
+- Uppdatera `INPUT_PERMISSIONS` och kör enhetstester
 
-2. **Input blockeras i fel state**
-   - **Orsak**: Input permissions är för restriktiva
-   - **Lösning**: Uppdatera INPUT_PERMISSIONS för aktuellt state
-   - **Verifiering**: Använd `isInputAllowed(state, key)` för att testa
+3) Timers som inte rensas
+- Säkerställ att cleanup körs i `setState` för relevanta states
 
-3. **Timers fortsätter köra efter state transition**
-   - **Orsak**: Timers nollställs inte korrekt vid state transition
-   - **Lösning**: Lägg till timer cleanup i setState callback
-   - **Exempel**: Lock delay timer nollställs vid PAUSE och GAME_OVER
+## Interaktion med backend
 
-## Användning
+- När spelaren når `GAME_OVER` bör frontend försöka spara poängen via backend (POST `/api/scores`).
+- Skicka ett vältaligt dataschema: { name, points, level, lines, gameSeed?, duration? }.
+- Om backend saknas eller returnerar fel, spara lokalt i `localStorage` som fallback.
 
-### Grundläggande state-hantering
+<!-- Kommentar: Se även `frontend/COMPONENTS_README.md` för hur GameOver-komponenten hanterar sparning och återkoppling. -->
+
+## Exempel på användning
 
 ```typescript
-// Starta spel
 setState(GameState.PLAYING);
-
-// Pausa spel
 setState(GameState.PAUSE);
-
-// Game over
 setState(GameState.GAME_OVER);
-
-// Återgå till start
 setState(GameState.START);
 ```
 
-### Input-hantering
-
 ```typescript
-// Kontrollera om input är tillåten
 if (isInputAllowed(gameState, 'ArrowLeft')) {
-  // Hantera input
+  // hantera vänster-rörelse
 }
 ```
 
-### State transition med callback
-
-```typescript
-const newState = transitionState(currentState, targetState, (from, to) => {
-  console.log(`Transitioned from ${from} to ${to}`);
-  // Utför ytterligare åtgärder vid transition
-});
-```
+<!-- Kommentar: Behöver du att jag lägger till specifika tester eller justerar INPUT_PERMISSIONS? -->
