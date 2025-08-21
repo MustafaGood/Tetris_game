@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
+// Partikelsystem för visuella effekter (svenska kommentarer)
 interface Particle {
   id: number;
   x: number;
@@ -13,24 +14,26 @@ interface Particle {
 }
 
 interface ParticleEffectProps {
-  isActive: boolean;
-  position: { x: number; y: number };
-  onComplete: () => void;
+  isActive: boolean; // Om effekten ska spelas
+  position: { x: number; y: number }; // Startposition i px
+  onComplete: () => void; // Callback när alla partiklar är döda
 }
 
 const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onComplete }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
+  const calledRef = useRef(false); // Förhindra flera onComplete-anrop
 
   useEffect(() => {
     if (!isActive) return;
 
-    // Create particles
+    calledRef.current = false;
+
     const newParticles: Particle[] = [];
     const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
     
     for (let i = 0; i < 20; i++) {
       newParticles.push({
-        id: i,
+        id: Date.now() + i, // unikt id
         x: position.x,
         y: position.y,
         vx: (Math.random() - 0.5) * 8,
@@ -44,18 +47,21 @@ const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onC
 
     setParticles(newParticles);
 
-    // Animate particles
     const animate = () => {
       setParticles(prevParticles => {
-        const updated = prevParticles.map(particle => ({
-          ...particle,
-          x: particle.x + particle.vx * 0.16,
-          y: particle.y + particle.vy * 0.16,
-          vy: particle.vy + 0.3, // gravity
-          life: particle.life - 0.02
-        })).filter(particle => particle.life > 0);
+        const updated = prevParticles
+          .map(particle => ({
+            ...particle,
+            x: particle.x + particle.vx * 0.16,
+            y: particle.y + particle.vy * 0.16,
+            vy: particle.vy + 0.3,
+            life: particle.life - 0.02
+          }))
+          .filter(particle => particle.life > 0);
 
-        if (updated.length === 0) {
+        if (updated.length === 0 && !calledRef.current) {
+          calledRef.current = true;
+          // Kör callback när animationen är klar
           onComplete();
           return [];
         }
@@ -64,7 +70,7 @@ const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onC
       });
     };
 
-    const interval = setInterval(animate, 16); // 60 FPS
+    const interval = setInterval(animate, 16);
 
     return () => clearInterval(interval);
   }, [isActive, position, onComplete]);

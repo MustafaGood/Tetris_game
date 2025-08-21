@@ -1,51 +1,40 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { 
-  emptyGrid, 
-  Grid, 
-  Piece, 
-  spawn, 
-  Bag, 
-  collide, 
-  merge, 
-  clearLines, 
+  emptyGrid,
+  Grid,
+  Piece,
+  spawn,
+  Bag,
+  collide,
+  merge,
   getFullRows,
   clearRows,
-  applyGravity,
-  rotate, 
   rotateWithSRS,
-  tickSpeed, 
-  W, 
-  calculateScore,
-  calculateScoreWithB2B,
-  calculateComboScore,
+  tickSpeed,
+  W,
   calculateSoftDropScore,
   calculateHardDropScore,
   isTetris,
   isTSpin,
   calculateTotalScore,
   isGameOver,
-  isLanded,
-  canMoveLeft,
-  canMoveRight,
-  canMoveDown,
   validateGrid,
   GameState,
-  canTransition,
   isInputAllowed,
   transitionState,
   saveLocalScore,
-  getLocalScores,
-  isLocalHighscore,
-  LocalScore
+  isLocalHighscore
 } from './tetris';
-import { fetchScores, postScore, deleteScore, testConnection, Score, formatDate, formatScore } from './api';
+import { fetchScores, testConnection, Score, formatScore } from './api';
 import GameBoard from './components/GameBoard';
-import SidePanel from './components/SidePanel';
 import MainMenu from './components/MainMenu';
 import Settings from './components/Settings';
 import Help from './components/Help';
+import GameOver from './components/GameOver';
+import Leaderboard from './components/Leaderboard';
 import AnimatedBackground from './components/AnimatedBackground';
 import ParticleEffect from './components/ParticleEffect';
+import NextPieces from './components/NextPieces';
 import { useSound } from './hooks/useSound';
 import { useTheme } from './contexts/ThemeContext';
 
@@ -139,10 +128,9 @@ export default function App() {
   const [over, setOver] = useState(false);
   const [board, setBoard] = useState<Grid>(() => emptyGrid());
   const [scores, setScores] = useState<Score[]>([]);
-  const [localScores, setLocalScores] = useState<LocalScore[]>([]);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
-  const [playerName, setPlayerName] = useState('');
-  const [showNameInput, setShowNameInput] = useState(false);
+  const connectionTestRef = useRef<boolean>(false);
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null);
   
 
   const [lockDelayTimer, setLockDelayTimer] = useState<number | null>(null);
@@ -152,16 +140,24 @@ export default function App() {
 
   const [isClearingLines, setIsClearingLines] = useState(false);
   const [lastTetris, setLastTetris] = useState(false);
-  const [lineClearAnimation, setLineClearAnimation] = useState<number[]>([]);
+  const [_, setLineClearAnimation] = useState<number[]>([]);
   
 
   const [combo, setCombo] = useState(0);
   const [lastMove, setLastMove] = useState<string>('');
   
 
-  const [ghostPieceEnabled, setGhostPieceEnabled] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [ghostPieceEnabled, setGhostPieceEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tetris:ghostPieceEnabled') || 'false'); } catch { return false; }
+  });
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tetris:soundEnabled') || 'false'); } catch { return false; }
+  });
   const [startLevel, setStartLevel] = useState(1);
+  const [nextPiecesEnabled, setNextPiecesEnabled] = useState(true);
+  const [nextPiecesCount, setNextPiecesCount] = useState(5);
+  const [highlightTetris, setHighlightTetris] = useState(false);
+  const [showStrategyHints, setShowStrategyHints] = useState(false);
   
 
   const { theme, setTheme } = useTheme();
@@ -173,10 +169,18 @@ export default function App() {
   }>({ isActive: false, position: { x: 0, y: 0 } });
   
 
-  const { isKeyPressed, shouldProcessKey, setKeyPressed } = useThrottledKeys();
+  const { shouldProcessKey, setKeyPressed } = useThrottledKeys();
   
 
   const sounds = useSound(soundEnabled);
+
+  useEffect(() => {
+    try { localStorage.setItem('tetris:ghostPieceEnabled', JSON.stringify(ghostPieceEnabled)); } catch {}
+  }, [ghostPieceEnabled]);
+
+  useEffect(() => {
+    try { localStorage.setItem('tetris:soundEnabled', JSON.stringify(soundEnabled)); } catch {}
+  }, [soundEnabled]);
 
 
   const initializeAudio = useCallback(async () => {
@@ -193,8 +197,45 @@ export default function App() {
   }, [bag]);
 
 
-  useEffect(() => {
-    testConnection().then(setBackendConnected).catch(() => setBackendConnected(false));
+    useEffect(() => {
+    const runConnectionTest = async () => {
+      if (connectionTestRef.current) {
+        console.log('🔄 Connection test already completed, skipping...');
+        return;
+      }
+      
+      console.log('🚀 Starting backend connection test...');
+      console.log('🔍 Component mount count check...');
+      connectionTestRef.current = true;
+      
+      setBackendConnected(null);
+      
+      const testBackendConnection = async () => {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        try {
+          console.log(`🔄 Attempting to connect to backend...`);
+          const connected = await testConnection();
+          if (connected) {
+            console.log('✅ Backend connection established successfully!');
+          } else {
+            console.log('❌ Backend connection failed');
+          }
+          return connected;
+        } catch (error) {
+          console.warn(`⚠️ Connection attempt failed:`, error);
+          return false;
+        }
+      };
+      
+      const connected = await testBackendConnection();
+      setBackendConnected(connected);
+      if (!connected) {
+        console.log('ℹ️ Backend connection failed, continuing with local mode');
+      }
+    };
+    
+    runConnectionTest();
   }, []);
 
 
@@ -203,7 +244,6 @@ export default function App() {
       if (backendConnected) {
         fetchScores(10).then(setScores).catch(() => {});
       }
-      setLocalScores(getLocalScores());
     }
   }, [over, backendConnected]);
 
@@ -213,7 +253,6 @@ export default function App() {
       if (backendConnected) {
         fetchScores(100).then(setScores).catch(() => {});
       }
-      setLocalScores(getLocalScores());
     }
   }, [uiState, backendConnected]);
 
@@ -270,12 +309,16 @@ export default function App() {
     } else {
       if (!isLocked && !lockDelayTimer) {
         const timer = setTimeout(() => {
-          lockPiece(cur);
           setLockDelayTimer(null);
           setIsLocked(false);
         }, LOCK_DELAY_MS);
         setLockDelayTimer(timer);
         setIsLocked(true);
+      }
+      
+      if (isLocked && !lockDelayTimer && !collide(board, cur)) {
+        lockPiece(cur);
+        setIsLocked(false);
       }
     }
   }, [cur, board, over, paused, isClearingLines, lockDelayTimer, isLocked, level]);
@@ -484,6 +527,9 @@ export default function App() {
             reset();
           }
           setPaused(false);
+          if (sounds.musicEnabled) {
+            sounds.playBackgroundMusic();
+          }
           break;
         case GameState.PAUSE:
           setPaused(true);
@@ -493,6 +539,7 @@ export default function App() {
             setLockDelayTimer(null);
           }
           setIsLocked(false);
+          sounds.stopBackgroundMusic();
           break;
         case GameState.GAME_OVER:
           setOver(true);
@@ -500,7 +547,7 @@ export default function App() {
 
           if (isLocalHighscore(points)) {
             saveLocalScore({
-              playerName: playerName || 'Anonym',
+              playerName: 'Anonym',
               score: points,
               level,
               lines,
@@ -528,7 +575,7 @@ export default function App() {
     if (validTransition) {
       setGameState(validTransition);
     }
-  }, [gameState, reset, lockDelayTimer]);
+  }, [gameState, reset, lockDelayTimer, sounds]);
 
 
   const startGame = useCallback(async () => {
@@ -538,6 +585,7 @@ export default function App() {
     if (sounds.musicEnabled) {
       sounds.playBackgroundMusic();
     }
+    setGameStartTime(Date.now());
     setState(GameState.PLAYING);
   }, [setState, initializeAudio, sounds]);
 
@@ -550,37 +598,25 @@ export default function App() {
     }
   }, [gameState, setState]);
 
-
-
-
-  const saveScore = useCallback(async (name: string) => {
-    if (!backendConnected) return false;
-    
-    const result = await postScore({
-      name: name.trim(),
-      points,
-      level,
-      lines
-    });
-    
-    if (result.success) {
-
-      fetchScores(10).then(setScores).catch(() => {});
-      return true;
+  const restartGame = useCallback(async () => {
+    await initializeAudio();
+    if (sounds.musicEnabled) {
+      sounds.playBackgroundMusic();
     }
-    
-    return false;
-  }, [points, level, lines, backendConnected]);
+    reset();
+    setGameStartTime(Date.now());
+    setGameState(GameState.PLAYING);
+    setPaused(false);
+    setOver(false);
+  }, [initializeAudio, sounds, reset]);
 
 
-  const handleDeleteScore = useCallback(async (id: number) => {
-    if (!backendConnected) return;
-    
-    const result = await deleteScore(id);
-    if (result.success) {
-      setScores(prev => prev.filter(score => score.id !== id));
-    }
-  }, [backendConnected]);
+
+
+
+
+
+
 
 
   useEffect(() => {
@@ -632,17 +668,17 @@ export default function App() {
           case 'Escape':
             e.preventDefault();
             if (gameState === GameState.PLAYING) {
-
-              setState(GameState.START);
-              setUiState('menu');
+              setState(GameState.PAUSE);
             } else if (gameState === GameState.PAUSE) {
-              pauseGame();
+              setState(GameState.PLAYING);
             }
             break;
           case 'KeyR':
             e.preventDefault();
             if (gameState === GameState.GAME_OVER) {
               startGame();
+            } else if (gameState === GameState.PAUSE) {
+              restartGame();
             }
             break;
           case 'Enter':
@@ -726,6 +762,16 @@ export default function App() {
                 ghostPieceEnabled={ghostPieceEnabled}
               />
 
+              {/* ESC-knapp för paus/fortsätt */}
+              <button
+                onClick={() => setState(gameState === GameState.PLAYING ? GameState.PAUSE : GameState.PLAYING)}
+                title="Pausa/Fortsätt (Esc)"
+                aria-label="Pausa/Fortsätt (Esc)"
+                className="absolute top-2 right-2 px-3 py-1 rounded-md text-xs font-semibold bg-gray-800/80 hover:bg-gray-700 text-white border border-gray-600 shadow"
+              >
+                Esc
+              </button>
+
               <ParticleEffect
                 isActive={particleEffect.isActive}
                 position={particleEffect.position}
@@ -735,22 +781,36 @@ export default function App() {
               />
 
               {gameState === GameState.PAUSE && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                  <div className="bg-gray-800 p-8 rounded-xl border border-gray-600 text-center">
-                    <h2 className="text-2xl font-bold text-white mb-4">Pausat</h2>
-                    <p className="text-gray-300 mb-4">
-                      Tryck P eller Esc för att fortsätta
-                    </p>
-                    <button
-                      onClick={async () => {
-                        await initializeAudio();
-                        setState(GameState.START);
-                        setUiState("menu");
-                      }}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Avsluta
-                    </button>
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-xl">
+                  <div className="bg-gray-900 p-8 rounded-xl border border-gray-700 text-center w-80">
+                    <h2 className="text-2xl font-bold text-white mb-2">Pausat</h2>
+                    <p className="text-gray-400 mb-6">Esc: Fortsätt • R: Starta om • Avsluta: meny</p>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={() => setState(GameState.PLAYING)}
+                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Fortsätt (Esc)
+                      </button>
+                      <button
+                        onClick={() => {
+                          restartGame();
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Starta om
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await initializeAudio();
+                          setState(GameState.START);
+                          setUiState('menu');
+                        }}
+                        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Avsluta till startsidan
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -772,15 +832,20 @@ export default function App() {
 
               {/* Kommande Panel */}
               <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
-                <h3 className="font-bold text-blue-400 mb-2">Kommande</h3>
-                <div className="text-center">
-                  <p className="text-sm text-gray-300">{nextIds.length} brickor</p>
-                  <div className="flex justify-center gap-1 mt-2">
-                    {nextIds.slice(0, 3).map((id, index) => (
-                      <div key={index} className="w-4 h-4 bg-gray-600 rounded-sm"></div>
-                    ))}
+                {nextPiecesEnabled ? (
+                  <NextPieces 
+                    nextIds={nextIds} 
+                    showCount={nextPiecesCount}
+                    highlightTetris={highlightTetris}
+                    showHints={showStrategyHints}
+                    currentBoard={board}
+                  />
+                ) : (
+                  <div className="text-center text-gray-400">
+                    <h3 className="font-bold text-blue-400 mb-3">Kommande</h3>
+                    <p className="text-sm">Inaktiverat</p>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Statistik Panel */}
@@ -799,17 +864,31 @@ export default function App() {
               {/* Inställningar Panel */}
               <div className="border border-gray-600 p-4 rounded-lg bg-gray-800/50">
                 <h3 className="font-bold text-purple-400 mb-2">Inställningar</h3>
-                <div className="space-y-1 text-sm">
-                  <p>Spökbricka: 
-                    <span className={`ml-1 ${ghostPieceEnabled ? 'text-green-400' : 'text-red-400'}`}>
-                      {ghostPieceEnabled ? 'På' : 'Av'}
-                    </span>
-                  </p>
-                  <p>Ljud: 
-                    <span className={`ml-1 ${soundEnabled ? 'text-green-400' : 'text-red-400'}`}>
-                      {soundEnabled ? 'På' : 'Av'}
-                    </span>
-                  </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Spökbricka:</span>
+                    <button
+                      onClick={() => setGhostPieceEnabled(!ghostPieceEnabled)}
+                      title="Klicka för att växla Spökbricka"
+                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${ghostPieceEnabled ? 'bg-green-500/70' : 'bg-gray-600'}`}
+                      aria-pressed={ghostPieceEnabled}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${ghostPieceEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                    <span className={`ml-2 ${ghostPieceEnabled ? 'text-green-400' : 'text-red-400'}`}>{ghostPieceEnabled ? 'På' : 'Av'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Ljud:</span>
+                    <button
+                      onClick={() => setSoundEnabled(!soundEnabled)}
+                      title="Klicka för att växla Ljud"
+                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${soundEnabled ? 'bg-green-500/70' : 'bg-gray-600'}`}
+                      aria-pressed={soundEnabled}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                    <span className={`ml-2 ${soundEnabled ? 'text-green-400' : 'text-red-400'}`}>{soundEnabled ? 'På' : 'Av'}</span>
+                  </div>
                 </div>
               </div>
 
@@ -843,15 +922,15 @@ export default function App() {
                     ))
                   ) : (
                     <>
-                      <div className="flex justify-between">
+                      <div key="placeholder-1" className="flex justify-between">
                         <span className="text-gray-300">1. ok</span>
                         <span className="text-white font-bold">3,524</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div key="placeholder-2" className="flex justify-between">
                         <span className="text-gray-300">2. ok</span>
                         <span className="text-white font-bold">2,868</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div key="placeholder-3" className="flex justify-between">
                         <span className="text-gray-300">3. Anonym</span>
                         <span className="text-white font-bold">890</span>
                       </div>
@@ -867,181 +946,47 @@ export default function App() {
   }
 
     if (gameState === GameState.GAME_OVER) {
-  return (
+      return (
         <>
           <AnimatedBackground />
-          <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
-            <div className="bg-gray-800 p-8 rounded-xl border border-gray-600 text-center max-w-md w-full">
-            <h2 className="text-3xl font-bold text-white mb-6">Game Over!</h2>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-300">Poäng:</span>
-                <span className="text-white font-bold">{formatScore(points)}</span>
-          </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Nivå:</span>
-                <span className="text-white font-bold">{level}</span>
-          </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Rader:</span>
-                <span className="text-white font-bold">{lines}</span>
-        </div>
-        </div>
-
-            {backendConnected && !showNameInput && (
-    <button
-                onClick={async () => {
-                  await initializeAudio();
-                  setShowNameInput(true);
-                }}
-                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold transition-colors mb-4"
-              >
-                Spara Poäng
-    </button>
-            )}
-
-            {showNameInput && (
-              <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="Ditt namn..."
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  className="w-full p-3 rounded-lg border border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                  maxLength={16}
-                  autoFocus
-                />
-          <button
-                  onClick={async () => {
-                    await initializeAudio();
-                    if (playerName.trim()) {
-                      const success = await saveScore(playerName);
-                      if (success) {
-                        setShowNameInput(false);
-                        setPlayerName('');
-                      }
-                    }
-                  }}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-bold transition-colors mt-2"
-                >
-                  Spara
-          </button>
-        </div>
-            )}
-
-            <div className="space-y-2">
-              <button
-                onClick={async () => {
-                  await initializeAudio();
-                  startGame();
-                }}
-                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
-              >
-                Spela Igen
-              </button>
-              <button
-                onClick={async () => {
-                  await initializeAudio();
-                  setState(GameState.START);
-                  setUiState('menu');
-                }}
-                className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg font-bold transition-colors"
-              >
-                Huvudmeny
-              </button>
-            </div>
-      </div>
-    </div>
+          <GameOver
+            points={points}
+            level={level}
+            lines={lines}
+            gameDuration={gameStartTime ? Date.now() - gameStartTime : undefined}
+            backendConnected={backendConnected}
+            onPlayAgain={async () => {
+              await initializeAudio();
+              startGame();
+            }}
+            onMainMenu={async () => {
+              await initializeAudio();
+              setState(GameState.START);
+              setUiState('menu');
+            }}
+            onScoreSaved={(updatedScores) => {
+              setScores(updatedScores);
+            }}
+          />
         </>
       );
     }
 
     if (uiState === 'highscores') {
-  return (
+      return (
         <>
-          <AnimatedBackground />
-          <div className="min-h-screen p-4 relative z-10">
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
-              <h2 className="text-3xl font-bold text-white mb-6 text-center">🏆 Highscores</h2>
-              
-
-              {backendConnected && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-4">🌐 Online Highscores</h3>
-                  {scores.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {scores.map((score, index) => (
-                        <div key={score.id} className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                          <div className="flex items-center gap-4">
-                            <span className="text-gray-400 w-8">#{index + 1}</span>
-                            <span className="text-white font-bold">{score.name}</span>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              <div className="text-white font-bold">{formatScore(score.points)}</div>
-                              <div className="text-gray-400 text-sm">Nivå {score.level} • {score.lines} rader</div>
-                            </div>
-                            <div className="text-gray-500 text-sm">{formatDate(score.createdAt)}</div>
-                            <button
-                              onClick={() => handleDeleteScore(score.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-gray-400 py-4">
-                      Inga online highscores ännu
-                    </div>
-                  )}
-                </div>
-              )}
-
-
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-white mb-4">💾 Lokala Highscores</h3>
-                {localScores.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {localScores.map((score, index) => (
-                      <div key={score.id} className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <span className="text-gray-400 w-8">#{index + 1}</span>
-                          <span className="text-white font-bold">{score.playerName}</span>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right">
-                            <div className="text-white font-bold">{formatScore(score.score)}</div>
-                            <div className="text-gray-400 text-sm">Nivå {score.level} • {score.lines} rader</div>
-                          </div>
-                          <div className="text-gray-500 text-sm">{new Date(score.date).toLocaleDateString('sv-SE')}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-400 py-4">
-                    Inga lokala highscores ännu
-                  </div>
-                )}
-              </div>
-
-          <button
-            onClick={async () => {
+          <AnimatedBackground key="animated-background" />
+          <Leaderboard
+            key="leaderboard"
+            backendConnected={backendConnected}
+            onBack={async () => {
               await initializeAudio();
               setUiState('menu');
             }}
-            className="w-full mt-6 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"
-          >
-            Tillbaka
-          </button>
-        </div>
-      </div>
-    </div>
+            onScoreDeleted={(updatedScores) => {
+              setScores(updatedScores);
+            }}
+          />
         </>
       );
     }
@@ -1049,8 +994,8 @@ export default function App() {
     if (uiState === 'help') {
       return (
         <>
-          <AnimatedBackground />
-          <Help onBack={async () => {
+          <AnimatedBackground key="animated-background" />
+          <Help key="help" onBack={async () => {
             await initializeAudio();
             setUiState('menu');
           }} />
@@ -1061,20 +1006,29 @@ export default function App() {
     if (uiState === 'settings') {
       return (
         <>
-          <AnimatedBackground />
+          <AnimatedBackground key="animated-background" />
           <Settings
+            key="settings"
             ghostPieceEnabled={ghostPieceEnabled}
             soundEnabled={soundEnabled}
             startLevel={startLevel}
             musicEnabled={sounds.musicEnabled}
             soundEffectsEnabled={sounds.soundEffectsEnabled}
             theme={theme}
+            nextPiecesEnabled={nextPiecesEnabled}
+            nextPiecesCount={nextPiecesCount}
+            highlightTetris={highlightTetris}
+            showStrategyHints={showStrategyHints}
             onToggleGhostPiece={() => setGhostPieceEnabled(!ghostPieceEnabled)}
             onToggleSound={() => setSoundEnabled(!soundEnabled)}
             onToggleMusic={handleToggleMusic}
             onToggleSoundEffects={handleToggleSoundEffects}
             onStartLevelChange={setStartLevel}
             onThemeChange={handleThemeChange}
+            onToggleNextPieces={() => setNextPiecesEnabled(!nextPiecesEnabled)}
+            onNextPiecesCountChange={setNextPiecesCount}
+            onToggleHighlightTetris={() => setHighlightTetris(!highlightTetris)}
+            onToggleStrategyHints={() => setShowStrategyHints(!showStrategyHints)}
             onBack={async () => {
               await initializeAudio();
               setUiState('menu');
@@ -1087,8 +1041,8 @@ export default function App() {
     if (uiState === 'info') {
   return (
         <>
-          <AnimatedBackground />
-          <div className="min-h-screen p-4 relative z-10">
+          <AnimatedBackground key="animated-background" />
+          <div key="info-content" className="min-h-screen p-4 relative z-10">
             <div className="max-w-4xl mx-auto">
               <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
                 <h2 className="text-3xl font-bold text-white mb-6 text-center">ℹ️ Om Spelet</h2>
@@ -1194,21 +1148,3 @@ export default function App() {
     );
   }
 
-
-function ControlItem({ keyName, action, description }: { 
-  keyName: string; 
-  action: string; 
-  description: string 
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <kbd className="px-2 py-1 bg-gray-600 text-white text-sm rounded font-mono">
-        {keyName}
-      </kbd>
-        <div>
-        <div className="text-white font-bold">{action}</div>
-        <div className="text-gray-400 text-sm">{description}</div>
-              </div>
-            </div>
-  );
-} 

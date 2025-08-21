@@ -1,87 +1,95 @@
+// ========================================
+// TETRIS SPEL - HUVUDLOGIK
+// ========================================
+// Denna fil innehåller all spelogik för Tetris-spelet
+// Inkluderar: tetrominoer, kollisionsdetektering, poängberäkning och spelstatus
 
-// Cell: 0 = tom, 1..7 = olika tetromino
-export type Cell = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7; // 0 = tomt, 1..7 = tetromino färg/id
-// Grid: Spelplanen, tvådimensionell array
-export type Grid = Cell[][]; // [y][x]
+// Typdefinitioner för spelceller och rutnät
+export type Cell = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type Grid = Cell[][];
 
-// Bredd och höjd på spelplanen
+// Spelbrädets dimensioner (bredd x höjd)
 export const W = 10, H = 20;
 
-// Tetromino-färger för bättre visuell representation
+// Färger för olika tetrominoer (1-7 representerar olika former)
 export const TETROMINO_COLORS = {
-  1: '#00f5ff', // I - Cyan
-  2: '#0000ff', // J - Blue
-  3: '#ff7f00', // L - Orange
-  4: '#ffff00', // O - Yellow
-  5: '#00ff00', // S - Green
-  6: '#8000ff', // T - Purple
-  7: '#ff0000', // Z - Red
+  1: '#00f5ff',  // Cyan (I-form)
+  2: '#0000ff',  // Blå (J-form) 
+  3: '#ff7f00',  // Orange (L-form)
+  4: '#ffff00',  // Gul (O-form)
+  5: '#00ff00',  // Grön (S-form)
+  6: '#8000ff',  // Lila (T-form)
+  7: '#ff0000',  // Röd (Z-form)
 };
 
-// Definition av alla tetromino-former och deras rotationer
+// Definitioner av alla tetromino-former och deras rotationer
+// Varje form har 4 rotationer (0, 90, 180, 270 grader)
 const SHAPES: Record<number, number[][][]> = {
-  1: [ // I-formen
-    [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
-    [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],
-    [[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],
-    [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
+  1: [  // I-form (lång rak)
+    [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],  // Liggande
+    [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],  // Stående
+    [[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],  // Liggande (omvänd)
+    [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],  // Stående (omvänd)
   ],
-  2: [ // J-formen
-    [[2,0,0],[2,2,2],[0,0,0]],
-    [[0,2,2],[0,2,0],[0,2,0]],
-    [[0,0,0],[2,2,2],[0,0,2]],
-    [[0,2,0],[0,2,0],[2,2,0]],
+  2: [  // J-form (L-formad)
+    [[2,0,0],[2,2,2],[0,0,0]],  // L-formad uppåt
+    [[0,2,2],[0,2,0],[0,2,0]],  // L-formad höger
+    [[0,0,0],[2,2,2],[0,0,2]],  // L-formad nedåt
+    [[0,2,0],[0,2,0],[2,2,0]],  // L-formad vänster
   ],
-  3: [ // L-formen
-    [[0,0,3],[3,3,3],[0,0,0]],
-    [[0,3,0],[0,3,0],[0,3,3]],
-    [[0,0,0],[3,3,3],[3,0,0]],
-    [[3,3,0],[0,3,0],[0,3,0]],
+  3: [  // L-form (omvänd L-formad)
+    [[0,0,3],[3,3,3],[0,0,0]],  // L-formad uppåt
+    [[0,3,0],[0,3,0],[0,3,3]],  // L-formad höger
+    [[0,0,0],[3,3,3],[3,0,0]],  // L-formad nedåt
+    [[3,3,0],[0,3,0],[0,3,0]],  // L-formad vänster
   ],
-  4: [ // O-formen
-    [[4,4],[4,4]],
+  4: [  // O-form (kvadratisk)
+    [[4,4],[4,4]],  // Kvadrat (ingen rotation behövs)
   ],
-  5: [ // S-formen
-    [[0,5,5],[5,5,0],[0,0,0]],
-    [[0,5,0],[0,5,5],[0,0,5]],
-    [[0,0,0],[0,5,5],[5,5,0]],
-    [[5,0,0],[5,5,0],[0,5,0]],
+  5: [  // S-form (S-formad)
+    [[0,5,5],[5,5,0],[0,0,0]],  // S-formad
+    [[0,5,0],[0,5,5],[0,0,5]],  // S-formad roterad
+    [[0,0,0],[0,5,5],[5,5,0]],  // S-formad omvänd
+    [[5,0,0],[5,5,0],[0,5,0]],  // S-formad roterad omvänd
   ],
-  6: [ // T-formen
-    [[0,6,0],[6,6,6],[0,0,0]],
-    [[0,6,0],[0,6,6],[0,6,0]],
-    [[0,0,0],[6,6,6],[0,6,0]],
-    [[0,6,0],[6,6,0],[0,6,0]],
+  6: [  // T-form (T-formad)
+    [[0,6,0],[6,6,6],[0,0,0]],  // T-formad uppåt
+    [[0,6,0],[0,6,6],[0,6,0]],  // T-formad höger
+    [[0,0,0],[6,6,6],[0,6,0]],  // T-formad nedåt
+    [[0,6,0],[6,6,0],[0,6,0]],  // T-formad vänster
   ],
-  7: [ // Z-formen
-    [[7,7,0],[0,7,7],[0,0,0]],
-    [[0,0,7],[0,7,7],[0,7,0]],
-    [[0,0,0],[7,7,0],[0,7,7]],
-    [[0,7,0],[7,7,0],[7,0,0]],
+  7: [  // Z-form (Z-formad)
+    [[7,7,0],[0,7,7],[0,0,0]],  // Z-formad
+    [[0,0,7],[0,7,7],[0,7,0]],  // Z-formad roterad
+    [[0,0,0],[7,7,0],[0,7,7]],  // Z-formad omvänd
+    [[0,7,0],[7,7,0],[7,0,0]],  // Z-formad roterad omvänd
   ],
 };
 
-// Typ för ett block (tetromino)
+// Typdefinition för en spelbit (tetromino)
 export type Piece = { id: number; r: number; x: number; y: number };
 
-// Skapar en tom spelplan
+// Skapar ett tomt spelbräde fyllt med nollor
 export function emptyGrid(): Grid {
   return Array.from({ length: H }, () => Array(W).fill(0) as Cell[]);
 }
 
-// "Bag"-systemet för att slumpa block (7-bag system för bättre balans)
+// Klass för att hantera slumpmässig generering av spelbitar
+// Använder "7-bag" system för att förhindra att samma bit kommer för ofta
 export class Bag {
-  private bag: number[] = [];
-  private history: number[] = [];
+  private bag: number[] = [];           // Aktuell påse med bitar
+  private history: number[] = [];      // Historik över senaste bitarna
 
+  // Hämtar nästa spelbit från påsen
   next(): number {
     if (this.bag.length === 0) {
+      // Om påsen är tom, skapa en ny med alla 7 bitar i slumpmässig ordning
       this.bag = [1, 2, 3, 4, 5, 6, 7].sort(() => Math.random() - 0.5);
     }
     const piece = this.bag.pop()!;
     this.history.push(piece);
     
-    // Behåll bara de senaste 14 pjäserna i historiken
+    // Behåll bara de senaste 14 bitarna i historiken
     if (this.history.length > 14) {
       this.history.shift();
     }
@@ -89,81 +97,88 @@ export class Bag {
     return piece;
   }
 
-  // Kontrollera om en pjäs finns i historiken (för att undvika för många samma pjäser)
+  // Kontrollerar om en viss bit har kommit nyligen
   hasInHistory(pieceId: number): boolean {
     return this.history.includes(pieceId);
   }
 
-  // Återställ bag (används vid nytt spel)
+  // Återställer påsen och historiken
   reset(): void {
     this.bag = [];
     this.history = [];
   }
 }
 
-// Skapar ett nytt block
+// Skapar en ny spelbit på toppen av spelbrädet
 export function spawn(bag: Bag): Piece {
-  const id = bag.next();
-  const r = 0;
-  const x = Math.floor(W/2) - 2;
-  const y = 0;
+  const id = bag.next();                    // Hämtar nästa bit från påsen
+  const r = 0;                              // Startar med rotation 0
+  const x = Math.floor(W/2) - 2;           // Centrerar biten horisontellt
+  const y = 0;                              // Placerar biten på toppen
   return { id, r, x, y };
 }
 
-// Klonar ett objekt (används för att kopiera spelplanen)
+// Hjälpfunktion för att kopiera värden (deep copy)
 export function clone<T>(v: T): T { 
   return JSON.parse(JSON.stringify(v)); 
 }
 
-// Returnerar formen för ett block med aktuell rotation
+// Hämtar formen för en spelbit baserat på dess ID och rotation
 export function shape(p: Piece): number[][] { 
   return SHAPES[p.id][p.r % SHAPES[p.id].length]; 
 }
 
-// Kontrollerar om ett block krockar med väggar eller andra block
+// ========================================
+// KOLLISIONSDETEKTERING
+// ========================================
+// Funktioner för att kontrollera om spelbitar kolliderar med varandra eller väggar
+
+// Kontrollerar om en spelbit kolliderar med något på spelbrädet
 export function collide(grid: Grid, p: Piece): boolean {
   const s = shape(p);
   for (let dy = 0; dy < s.length; dy++) {
     for (let dx = 0; dx < s[dy].length; dx++) {
-      if (!s[dy][dx]) continue;
+      if (!s[dy][dx]) continue;  // Hoppa över tomma celler
       const x = p.x + dx, y = p.y + dy;
-      if (x < 0 || x >= W || y >= H) return true;
-      if (y >= 0 && grid[y][x]) return true;
+      if (x < 0 || x >= W || y >= H) return true;  // Kollision med väggar eller golv
+      if (y >= 0 && grid[y][x]) return true;       // Kollision med andra bitar
     }
   }
   return false;
 }
 
-// Förbättrad kollisionsdetektering - specifika funktioner
+// Kontrollerar om en spelbit kolliderar med sidoväggarna
 export function collideWithWalls(p: Piece): boolean {
   const s = shape(p);
   for (let dy = 0; dy < s.length; dy++) {
     for (let dx = 0; dx < s[dy].length; dx++) {
-      if (!s[dy][dx]) continue;
+      if (!s[dy][dx]) continue;  // Hoppa över tomma celler
       const x = p.x + dx;
-      if (x < 0 || x >= W) return true;
+      if (x < 0 || x >= W) return true;  // Kollision med vänster eller höger vägg
     }
   }
   return false;
 }
 
+// Kontrollerar om en spelbit kolliderar med golvet
 export function collideWithBottom(p: Piece): boolean {
   const s = shape(p);
   for (let dy = 0; dy < s.length; dy++) {
     for (let dx = 0; dx < s[dy].length; dx++) {
-      if (!s[dy][dx]) continue;
+      if (!s[dy][dx]) continue;  // Hoppa över tomma celler
       const y = p.y + dy;
-      if (y >= H) return true;
+      if (y >= H) return true;   // Kollision med golvet
     }
   }
   return false;
 }
 
+// Kontrollerar om en spelbit kolliderar med andra bitar på spelbrädet
 export function collideWithBlocks(grid: Grid, p: Piece): boolean {
   const s = shape(p);
   for (let dy = 0; dy < s.length; dy++) {
     for (let dx = 0; dx < s[dy].length; dx++) {
-      if (!s[dy][dx]) continue;
+      if (!s[dy][dx]) continue;  // Hoppa över tomma celler
       const x = p.x + dx, y = p.y + dy;
       if (y >= 0 && y < H && x >= 0 && x < W && grid[y][x]) return true;
     }
@@ -171,42 +186,57 @@ export function collideWithBlocks(grid: Grid, p: Piece): boolean {
   return false;
 }
 
-// Kollisionsdetektering i specifika riktningar
+// ========================================
+// RÖRELSER
+// ========================================
+// Funktioner för att kontrollera om spelbitar kan röra sig i olika riktningar
+
+// Kontrollerar om en spelbit kan röra sig åt vänster
 export function canMoveLeft(grid: Grid, p: Piece): boolean {
   const testPiece = { ...p, x: p.x - 1 };
   return !collide(grid, testPiece);
 }
 
+// Kontrollerar om en spelbit kan röra sig åt höger
 export function canMoveRight(grid: Grid, p: Piece): boolean {
   const testPiece = { ...p, x: p.x + 1 };
   return !collide(grid, testPiece);
 }
 
+// Kontrollerar om en spelbit kan röra sig nedåt
 export function canMoveDown(grid: Grid, p: Piece): boolean {
   const testPiece = { ...p, y: p.y + 1 };
   return !collide(grid, testPiece);
 }
 
-// Kontrollerar om pjäsen är "landed" (kan inte falla längre)
+// ========================================
+// SPELBITSHANTERING
+// ========================================
+
+// Kontrollerar om en spelbit har landat (kan inte röra sig nedåt)
 export function isLanded(grid: Grid, p: Piece): boolean {
   const testPiece = { ...p, y: p.y + 1 };
   return collide(grid, testPiece);
 }
 
-// Säkerställer att inga block överlappar varandra
+// Validerar att spelbrädet bara innehåller giltiga värden (0-7)
 export function validateGrid(grid: Grid): boolean {
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const cell = grid[y][x];
       if (cell !== 0 && (cell < 1 || cell > 7)) {
-        return false; // Ogiltig cell-värde
+        return false;
       }
     }
   }
   return true;
 }
 
-// Lägger till ett block på spelplanen
+// ========================================
+// RUTNÄTSHANTERING
+// ========================================
+
+// Lägger till en spelbit på spelbrädet (när den landar)
 export function merge(grid: Grid, p: Piece): void {
   const s = shape(p);
   for (let dy = 0; dy < s.length; dy++) {
@@ -214,62 +244,67 @@ export function merge(grid: Grid, p: Piece): void {
       if (s[dy][dx]) {
         const x = p.x + dx, y = p.y + dy;
         if (y >= 0 && y < H && x >= 0 && x < W) {
-          grid[y][x] = p.id as Cell;
+          grid[y][x] = p.id as Cell;  // Sätt bitens ID på den positionen
         }
       }
     }
   }
 }
 
-// Upptäcker fulla rader och returnerar deras index
+// Hittar alla rader som är fulla (alla celler är ifyllda)
 export function getFullRows(grid: Grid): number[] {
   const fullRows: number[] = [];
   for (let y = 0; y < H; y++) {
-    if (grid[y].every(c => c !== 0)) {
+    if (grid[y].every(c => c !== 0)) {  // Om alla celler i raden är ifyllda
       fullRows.push(y);
     }
   }
   return fullRows;
 }
 
-// Rensar specifika rader och applicerar gravity
+// Rensar fulla rader från spelbrädet och lägger till nya tomma rader på toppen
 export function clearRows(grid: Grid, rows: number[]): void {
   if (rows.length === 0) return;
   
-  // Sortera raderna i fallande ordning för att undvika index-problem
+  // Sortera raderna från botten till toppen för att undvika indexproblem
   const sortedRows = [...rows].sort((a, b) => b - a);
   
-  // Ta bort de fulla raderna
+  // Ta bort alla fulla rader
   for (const rowIndex of sortedRows) {
     grid.splice(rowIndex, 1);
   }
   
-  // Lägg till tomma rader högst upp (gravity)
+  // Lägg till nya tomma rader på toppen
   for (let i = 0; i < rows.length; i++) {
     grid.unshift(Array(W).fill(0) as Cell[]);
   }
 }
 
-// Förbättrad clearLines funktion som använder de nya funktionerna
+// Rensar alla fulla rader och returnerar antalet rader som rensades
 export function clearLines(grid: Grid): number {
   const fullRows = getFullRows(grid);
   clearRows(grid, fullRows);
   return fullRows.length;
 }
 
-// Kontrollerar om gravity behöver appliceras
+// ========================================
+// GRAVITATION
+// ========================================
+// Funktioner för att hantera hur bitar faller när rader rensas
+
+// Kontrollerar om det finns bitar som behöver falla (tomma celler under ifyllda)
 export function needsGravity(grid: Grid): boolean {
   for (let y = H - 1; y > 0; y--) {
     for (let x = 0; x < W; x++) {
       if (grid[y][x] === 0 && grid[y - 1][x] !== 0) {
-        return true; // Det finns ett hål som behöver fylla
+        return true;  // Det finns en tom cell under en ifylld cell
       }
     }
   }
   return false;
 }
 
-// Applicerar gravity till griden
+// Applicerar gravitation - låter alla bitar falla tills de landar
 export function applyGravity(grid: Grid): void {
   let moved = true;
   while (moved) {
@@ -277,70 +312,83 @@ export function applyGravity(grid: Grid): void {
     for (let y = H - 1; y > 0; y--) {
       for (let x = 0; x < W; x++) {
         if (grid[y][x] === 0 && grid[y - 1][x] !== 0) {
-          grid[y][x] = grid[y - 1][x];
-          grid[y - 1][x] = 0;
-          moved = true;
+          grid[y][x] = grid[y - 1][x];      // Flytta biten nedåt
+          grid[y - 1][x] = 0;               // Rensa den gamla positionen
+          moved = true;                      // Markera att något flyttades
         }
       }
     }
   }
 }
 
-// Beräknar fallhastighet baserat på nivå
+// ========================================
+// SPELMECHANIKER
+// ========================================
+
+// Beräknar hur snabbt spelet ska gå baserat på nivå
+// Högre nivå = snabbare fallande bitar
 export function tickSpeed(level: number): number {
-  // Modern Tetris fallhastighet: snabbare på högre nivåer
+  // Minsta hastighet är 50ms, max är 800ms
   return Math.max(50, 800 - level * 50);
 }
 
-// Beräknar poäng baserat på antal rader och nivå
+// ========================================
+// POÄNGBERÄKNING
+// ========================================
+// Funktioner för att beräkna poäng baserat på olika prestationer
+
+// Grundläggande poängberäkning baserat på antal rader och nivå
 export function calculateScore(lines: number, level: number): number {
-  const lineScores = [0, 40, 100, 300, 1200]; // 0, 1, 2, 3, 4 rader
+  const lineScores = [0, 40, 100, 300, 1200];  // Poäng för 0, 1, 2, 3, 4 rader
   return lineScores[lines] * level;
 }
 
-// Beräknar poäng med Back-to-Back bonus
+// Poängberäkning med "Back-to-Back" bonus för Tetris (4 rader)
+// Ger 1.5x poäng om man gör flera Tetris i rad
 export function calculateScoreWithB2B(lines: number, level: number, isBackToBack: boolean = false): number {
   const baseScore = calculateScore(lines, level);
   
-  // Back-to-Back bonus för Tetris (4 rader)
+  // Back-to-Back bonus för Tetris
   if (lines === 4 && isBackToBack) {
-    return Math.floor(baseScore * 1.5); // 50% bonus för B2B Tetris
+    return Math.floor(baseScore * 1.5);
   }
   
   return baseScore;
 }
 
-// Beräknar combo-poäng
+// Bonuspoäng för kombos (flera rader i rad)
 export function calculateComboScore(combo: number, level: number): number {
-  if (combo <= 1) return 0;
-  return combo * 50 * level; // 50 poäng per combo-nivå * level
+  if (combo <= 1) return 0;  // Ingen bonus för första raden
+  return combo * 50 * level;  // 50 poäng per combo multiplicerat med nivå
 }
 
-// Beräknar soft drop poäng
+// Poäng för "soft drop" (snabbare nedåt-rörelse)
 export function calculateSoftDropScore(distance: number, level: number): number {
-  return distance * level; // 1 poäng per rad * level
+  return distance * level;  // 1 poäng per cell multiplicerat med nivå
 }
 
-// Beräknar hard drop poäng
+// Poäng för "hard drop" (direkt till golvet)
 export function calculateHardDropScore(distance: number, level: number): number {
-  return distance * 2; // 2 poäng per rad (fast)
+  return distance * 2;  // 2 poäng per cell (fast nivå påverkar inte)
 }
 
-// Kontrollerar om en line clear är en Tetris (4 rader)
+// ========================================
+// TETRIS-SPECIFIKA
+// ========================================
+
+// Kontrollerar om en spelbit har landat i en Tetris (4 rader)
 export function isTetris(lines: number): boolean {
   return lines === 4;
 }
 
-// Förbättrad T-Spin detection
+// Kontrollerar om en spelbit har landat i en T-Spin (minst 2 hörn ifyllda)
 export function isTSpin(lines: number, pieceId: number, lastMove: string, board: Grid, piece: Piece): boolean {
-  // Endast T-pjäser kan göra T-Spin
-  if (pieceId !== 6) return false;
+
+  if (pieceId !== 6) return false;  // Endast T-form kan göra T-Spin
   
-  // Måste ha gjort en rotation som sista rörelse
-  if (lastMove !== 'rotate') return false;
+  if (lastMove !== 'rotate') return false;  // Måste ha roterats senast
   
-  // Kontrollera om pjäsen är i en T-Spin position
-  // Detta är en förenklad version - full T-Spin detection är mer komplex
+  // Kontrollera hörnen runt T-biten
   const corners = getPieceCorners(piece, board);
   const filledCorners = corners.filter(corner => 
     corner.x >= 0 && corner.x < W && 
@@ -348,24 +396,23 @@ export function isTSpin(lines: number, pieceId: number, lastMove: string, board:
     board[corner.y][corner.x] !== 0
   ).length;
   
-  // T-Spin Mini: 2-3 hörn fyllda
-  // T-Spin: 3 hörn fyllda
+  // T-Spin kräver minst 2 hörn ifyllda och att minst 1 rad rensas
   return filledCorners >= 2 && lines > 0;
 }
 
-// Hjälpfunktion för att få hörnen av en pjäs
+// Hjälpfunktion för att hitta hörnen runt en T-bit
 function getPieceCorners(piece: Piece, board: Grid): {x: number, y: number}[] {
   const shape = SHAPES[piece.id][piece.r];
   const corners: {x: number, y: number}[] = [];
   
-  // Hitta hörnen av pjäsen
+  // Gå igenom alla celler i biten
   for (let y = 0; y < shape.length; y++) {
     for (let x = 0; x < shape[y].length; x++) {
       if (shape[y][x] !== 0) {
         const boardX = piece.x + x;
         const boardY = piece.y + y;
         
-        // Kontrollera om detta är ett hörn (har minst en tom cell bredvid)
+        // Kontrollera om detta är ett hörn (tomma celler diagonala)
         const isCorner = (
           (boardX > 0 && boardY > 0 && board[boardY-1][boardX-1] === 0) ||
           (boardX < W-1 && boardY > 0 && board[boardY-1][boardX+1] === 0) ||
@@ -383,7 +430,7 @@ function getPieceCorners(piece: Piece, board: Grid): {x: number, y: number}[] {
   return corners;
 }
 
-// Beräknar total poäng för en line clear med alla bonusar
+// Beräknar total poäng med alla bonusar (Back-to-Back, T-Spin, Combo)
 export function calculateTotalScore(
   lines: number, 
   level: number, 
@@ -393,124 +440,143 @@ export function calculateTotalScore(
 ): number {
   let score = calculateScoreWithB2B(lines, level, isBackToBack);
   
-  // T-Spin bonus
+  // T-Spin bonus (1.5x poäng eller 400 poäng per nivå om ingen rad rensas)
   if (isTSpin) {
     if (lines === 0) {
-      score = 400 * level; // T-Spin Mini utan line clear
+      score = 400 * level;  // T-Spin utan rader
     } else {
-      score = Math.floor(score * 1.5); // 50% bonus för T-Spin med line clear
+      score = Math.floor(score * 1.5);  // T-Spin med rader
     }
   }
   
-  // Combo bonus
+  // Lägg till combo-poäng
   score += calculateComboScore(combo, level);
   
   return score;
 }
 
-// Kontrollerar om spelet är över (när nya pjäser krockar direkt)
+// ========================================
+// SPELSTATUS
+// ========================================
+
+// Kontrollerar om spelet är över (bitar når toppen)
 export function isGameOver(grid: Grid): boolean {
-  // Kontrollera om det finns block i de övre raderna
+  // Kontrollera de två översta raderna
   for (let y = 0; y < 2; y++) {
     for (let x = 0; x < W; x++) {
       if (grid[y][x] !== 0) {
-        return true;
+        return true;  // Det finns bitar i de översta raderna
       }
     }
   }
   return false;
 }
 
-// Hjälpfunktion för att räkna antal tomma celler i en rad
+// ========================================
+// HJÄLPFUNKTIONER
+// ========================================
+
+// Räknar tomma celler i en rad
 export function countEmptyCells(row: Cell[]): number {
   return row.filter(cell => cell === 0).length;
 }
 
-// Hjälpfunktion för att hitta den högsta raden med block
+// Hittar den högsta raden som innehåller bitar
 export function getHighestRow(grid: Grid): number {
   for (let y = 0; y < H; y++) {
     if (grid[y].some(cell => cell !== 0)) {
-      return y;
+      return y;  // Returnera första raden med bitar
     }
   }
-  return H;
+  return H;  // Om inga bitar finns, returnera botten
 } 
 
-// Roterar ett block
+// ========================================
+// ROTATION
+// ========================================
+
+// Roterar en spelbit i angiven riktning (1 = medurs, -1 = moturs)
 export function rotate(p: Piece, dir: 1 | -1): Piece {
   const cp = clone(p);
-  cp.r = (cp.r + (dir === 1 ? 1 : -1) + 4) % 4;
+  cp.r = (cp.r + (dir === 1 ? 1 : -1) + 4) % 4;  // Håll rotationen mellan 0-3
   return cp;
 }
 
-// SRS (Super Rotation System) Wall Kick Offsets
-// Format: [fromRotation][toRotation] = [[x1, y1], [x2, y2], ...]
+// ========================================
+// SRS (SUPER ROTATION SYSTEM)
+// ========================================
+// Avancerat rotationssystem som låter bitar "sparkas" mot väggar
+
+// Wall-kick tabeller för vanliga bitar (J, L, S, T, Z)
 const SRS_WALL_KICKS: Record<number, Record<number, number[][]>> = {
-  // J, L, S, T, Z pieces (standard SRS)
+  // Från rotation 1 till 0 (medurs)
   1: {
-    0: [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]], // 1->0
-    2: [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],     // 1->2
+    0: [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+    2: [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
   },
+  // Från rotation 2 till 1 (medurs)
   2: {
-    1: [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],    // 2->1
-    3: [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],  // 2->3
+    1: [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+    3: [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
   },
+  // Från rotation 3 till 2 (medurs)
   3: {
-    2: [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]], // 3->2
-    0: [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],     // 3->0
+    2: [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+    0: [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
   },
+  // Från rotation 0 till 3 (medurs)
   0: {
-    3: [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],    // 0->3
-    1: [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],  // 0->1
+    3: [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+    1: [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
   },
 };
 
-// I-piece specific wall kicks (unique offsets)
+// Wall-kick tabeller för I-biten (har egna regler)
 const I_WALL_KICKS: Record<number, Record<number, number[][]>> = {
   1: {
-    0: [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],   // 1->0
-    2: [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],   // 1->2
+    0: [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],
+    2: [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],
   },
   2: {
-    1: [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],   // 2->1
-    3: [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],   // 2->3
+    1: [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],
+    3: [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],
   },
   3: {
-    2: [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],   // 3->2
-    0: [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],   // 3->0
+    2: [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],
+    0: [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],
   },
   0: {
-    3: [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],   // 0->3
-    1: [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],   // 0->1
+    3: [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],
+    1: [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],
   },
 };
 
-// O-piece doesn't rotate (stays the same)
+// Wall-kick tabeller för O-biten (kvadrat - ingen rotation behövs)
 const O_WALL_KICKS: Record<number, Record<number, number[][]>> = {
-  0: { 0: [[0, 0]] }, // No rotation needed
+  0: { 0: [[0, 0]] },  // Ingen rotation möjlig
 };
 
-// SRS Rotation med Wall Kicks
+// Roterar en spelbit med SRS-systemet
 export function rotateWithSRS(p: Piece, dir: 1 | -1, grid: Grid): Piece | null {
   const fromRotation = p.r;
   const toRotation = (fromRotation + (dir === 1 ? 1 : -1) + 4) % 4;
   
-  // O-piece doesn't rotate
+  // O-biten kan inte roteras
   if (p.id === 4) {
     return p;
   }
   
-  // Get appropriate wall kick table
+  // Välj rätt wall-kick tabell baserat på bitens typ
   let wallKicks: number[][];
-  if (p.id === 1) { // I-piece
+  if (p.id === 1) {
     wallKicks = I_WALL_KICKS[fromRotation][toRotation] || [[0, 0]];
-  } else if (p.id === 4) { // O-piece
+  } else if (p.id === 4) {
     wallKicks = O_WALL_KICKS[fromRotation][toRotation] || [[0, 0]];
-  } else { // J, L, S, T, Z pieces
+  } else {
     wallKicks = SRS_WALL_KICKS[fromRotation][toRotation] || [[0, 0]];
   }
   
-  // Test each wall kick offset
+  // Testa alla wall-kick positioner tills en fungerar
   for (const [dx, dy] of wallKicks) {
     const testPiece: Piece = {
       id: p.id,
@@ -520,51 +586,61 @@ export function rotateWithSRS(p: Piece, dir: 1 | -1, grid: Grid): Piece | null {
     };
     
     if (!collide(grid, testPiece)) {
-      return testPiece;
+      return testPiece;  // Returnera första position som fungerar
     }
   }
   
-  // No valid position found
+  // Ingen rotation möjlig
   return null;
 } 
 
-// Game State Enum för tydlig state-hantering
+// ========================================
+// SPELSTATUS HANTERING
+// ========================================
+// Funktioner för att hantera olika spelstatus och övergångar mellan dem
+
+// Enumeration av alla möjliga spelstatus
 export enum GameState {
-  START = 'START',           // Titelskärm eller "Press Start"
-  PLAYING = 'PLAYING',       // Normalt spel
-  PAUSE = 'PAUSE',          // Spelet fryst, väntar på återupptagning
-  GAME_OVER = 'GAME_OVER'   // Slutskärm
+  START = 'START',           // Startmeny
+  PLAYING = 'PLAYING',       // Spelet pågår
+  PAUSE = 'PAUSE',           // Spelet pausat
+  GAME_OVER = 'GAME_OVER'    // Spelet slut
 }
 
-// State transition validation
+// Definierar vilka övergångar som är tillåtna mellan olika status
 export const ALLOWED_TRANSITIONS: Record<GameState, GameState[]> = {
-  [GameState.START]: [GameState.PLAYING],
-  [GameState.PLAYING]: [GameState.PAUSE, GameState.GAME_OVER, GameState.START], // Tillåt att gå till START från PLAYING
-  [GameState.PAUSE]: [GameState.PLAYING, GameState.START],
-  [GameState.GAME_OVER]: [GameState.START]
+  [GameState.START]: [GameState.PLAYING],                    // Start → Spela
+  [GameState.PLAYING]: [GameState.PAUSE, GameState.GAME_OVER, GameState.START],  // Spela → Paus/Game Over/Start
+  [GameState.PAUSE]: [GameState.PLAYING, GameState.START],   // Paus → Spela/Start
+  [GameState.GAME_OVER]: [GameState.START, GameState.PLAYING] // Game Over → Start/Spela
 };
 
-// Input permissions för varje state
+// Definierar vilka input som är tillåtna i varje spelstatus
 export const INPUT_PERMISSIONS: Record<GameState, string[]> = {
-  [GameState.START]: ['Enter', 'Space'], // Endast start-knappar
-  [GameState.PLAYING]: [
+  [GameState.START]: ['Enter', 'Space'],                     // Starta spelet
+  [GameState.PLAYING]: [                                      // Alla spelkontroller
     'ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp',
     'Space', 'KeyC', 'KeyP', 'Escape', 'KeyR'
   ],
-  [GameState.PAUSE]: ['KeyP', 'Escape', 'Enter'], // Endast paus/resume och meny
-  [GameState.GAME_OVER]: ['Enter', 'Space', 'KeyR'] // Endast restart och meny
+  [GameState.PAUSE]: ['KeyP', 'Escape', 'Enter'],            // Pausa/avsluta/återuppta
+  [GameState.GAME_OVER]: ['Enter', 'Space', 'KeyR']          // Starta om/nytt spel
 };
 
-// State transition funktioner
+// ========================================
+// VALIDERING OCH ÖVERGÅNGAR
+// ========================================
+
+// Kontrollerar om en övergång mellan två status är tillåten
 export function canTransition(from: GameState, to: GameState): boolean {
   return ALLOWED_TRANSITIONS[from]?.includes(to) || false;
 }
 
+// Kontrollerar om en viss input är tillåten i aktuell spelstatus
 export function isInputAllowed(state: GameState, key: string): boolean {
   return INPUT_PERMISSIONS[state]?.includes(key) || false;
 }
 
-// State transition med validering
+// Validerar en statusövergång och loggar varningar vid ogiltiga övergångar
 export function validateStateTransition(from: GameState, to: GameState): boolean {
   if (!canTransition(from, to)) {
     console.warn(`Invalid state transition: ${from} -> ${to}`);
@@ -573,7 +649,7 @@ export function validateStateTransition(from: GameState, to: GameState): boolean
   return true;
 }
 
-// State transition med callback
+// Utför en statusövergång med validering och callback
 export function transitionState(
   from: GameState, 
   to: GameState, 
@@ -581,66 +657,76 @@ export function transitionState(
 ): GameState | null {
   if (validateStateTransition(from, to)) {
     if (onTransition) {
-      onTransition(from, to);
+      onTransition(from, to);  // Anropa callback-funktion
     }
-    return to;
+    return to;  // Returnera ny status
   }
-  return null;
+  return null;  // Returnera null om övergången inte är giltig
 } 
 
-// Beräknar ghost piece position (spökskuggan som visar var pjäsen kommer landa)
+// ========================================
+// GHOST PIECE
+// ========================================
+// Funktioner för att visa var en spelbit kommer att landa
+
+// Beräknar var en spelbit skulle landa om den föllde gravitationen
 export function getGhostPiecePosition(currentPiece: Piece, grid: Grid): Piece | null {
   if (!currentPiece) return null;
   
-  // Kopiera nuvarande pjäs
+  // Skapa en kopia av den aktuella biten
   const ghostPiece = clone(currentPiece);
   
-  // Flyttar nedåt stegvis tills kollision upptäcks
+  // Flytta biten nedåt tills den kolliderar med något
   while (!collide(grid, ghostPiece)) {
     ghostPiece.y++;
   }
   
-  // Flyttar ett steg upp för sista giltiga positionen
+  // Flytta tillbaka en steg (till sista giltiga positionen)
   ghostPiece.y--;
   
-  // Kontrollera att ghost piece inte är samma som current piece
+  // Om ghost piece är på samma position som original, visa inte den
   if (ghostPiece.y === currentPiece.y) {
-    return null; // Ingen ghost piece behövs om pjäsen redan är på botten
+    return null;
   }
-  
   return ghostPiece;
 }
 
-// Kontrollerar om ghost piece ska visas
+// Bestämmer om ghost piece ska visas baserat på spelstatus och position
 export function shouldShowGhostPiece(currentPiece: Piece, ghostPiece: Piece | null, gameState: GameState): boolean {
   return gameState === GameState.PLAYING && 
          currentPiece !== null && 
          ghostPiece !== null && 
-         ghostPiece.y !== currentPiece.y;
+         ghostPiece.y !== currentPiece.y;  // Visa bara om den är på en annan position
 } 
 
-// LocalStorage funktioner för lokala highscores
+// ========================================
+// LOKALA POÄNG
+// ========================================
+// Funktioner för att spara och hantera poäng lokalt i webbläsaren
+
+// Interface för lokala poäng
 export interface LocalScore {
-  id: number;
-  playerName: string;
-  score: number;
-  level: number;
-  lines: number;
-  date: string;
+  id: number;           // Unikt ID för poängen
+  playerName: string;   // Spelarens namn
+  score: number;        // Poäng
+  level: number;        // Nivå
+  lines: number;        // Antal rader
+  date: string;         // Datum när poängen gjordes
 }
 
-// Spara en ny highscore till LocalStorage
+// Sparar en ny poäng lokalt (max 10 stora poäng)
 export function saveLocalScore(score: Omit<LocalScore, 'id'>): void {
   try {
     const existingScores = getLocalScores();
     const newScore: LocalScore = {
       ...score,
-      id: Date.now() // Använd timestamp som unikt ID
+      id: Date.now()  // Använd timestamp som unikt ID
     };
     
+    // Lägg till ny poäng, sortera efter poäng (högst först) och behåll bara top 10
     const updatedScores = [...existingScores, newScore]
-      .sort((a, b) => b.score - a.score) // Sortera efter poäng (högst först)
-      .slice(0, 10); // Behåll bara top 10
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
     
     localStorage.setItem('tetris-highscores', JSON.stringify(updatedScores));
   } catch (error) {
@@ -648,7 +734,7 @@ export function saveLocalScore(score: Omit<LocalScore, 'id'>): void {
   }
 }
 
-// Hämta alla lokala highscores
+// Hämtar alla lokala poäng från localStorage
 export function getLocalScores(): LocalScore[] {
   try {
     const scores = localStorage.getItem('tetris-highscores');
@@ -659,13 +745,13 @@ export function getLocalScores(): LocalScore[] {
   }
 }
 
-// Kontrollera om en poäng är en highscore
+// Kontrollerar om en poäng är tillräckligt hög för att vara en highscore
 export function isLocalHighscore(score: number): boolean {
   const scores = getLocalScores();
   return scores.length < 10 || score > scores[scores.length - 1].score;
 }
 
-// Rensa alla lokala highscores
+// Rensar alla lokala poäng
 export function clearLocalScores(): void {
   try {
     localStorage.removeItem('tetris-highscores');
@@ -674,7 +760,7 @@ export function clearLocalScores(): void {
   }
 }
 
-// Ta bort en specifik highscore
+// Tar bort en specifik poäng baserat på ID
 export function deleteLocalScore(id: number): void {
   try {
     const scores = getLocalScores();
@@ -684,5 +770,9 @@ export function deleteLocalScore(id: number): void {
     console.error('Failed to delete local score:', error);
   }
 } 
+
+// ========================================
+// SLUT PÅ TETRIS SPEL - HUVUDLOGIK
+// ======================================== 
 
  

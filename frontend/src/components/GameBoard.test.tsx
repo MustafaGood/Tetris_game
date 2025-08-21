@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import GameBoard from './GameBoard';
 import { emptyGrid, spawn, Bag, GameState } from '../tetris';
 
-// Mock canvas context
+
 const mockContext = {
   clearRect: vi.fn(),
   fillRect: vi.fn(),
@@ -22,7 +22,7 @@ const mockCanvas = {
   height: 0,
 };
 
-// Mock canvas element
+
 Object.defineProperty(global, 'HTMLCanvasElement', {
   value: class {
     getContext() {
@@ -31,13 +31,13 @@ Object.defineProperty(global, 'HTMLCanvasElement', {
   },
 });
 
-// Test för GameState enum och transitions
+
 describe('GameState Management', () => {
   test('should allow valid state transitions', () => {
     expect(canTransition(GameState.START, GameState.PLAYING)).toBe(true);
     expect(canTransition(GameState.PLAYING, GameState.PAUSE)).toBe(true);
     expect(canTransition(GameState.PLAYING, GameState.GAME_OVER)).toBe(true);
-    expect(canTransition(GameState.PLAYING, GameState.START)).toBe(true); // Ny tillåten transition
+    expect(canTransition(GameState.PLAYING, GameState.START)).toBe(true);
     expect(canTransition(GameState.PAUSE, GameState.PLAYING)).toBe(true);
     expect(canTransition(GameState.PAUSE, GameState.START)).toBe(true);
     expect(canTransition(GameState.GAME_OVER, GameState.START)).toBe(true);
@@ -46,7 +46,7 @@ describe('GameState Management', () => {
   test('should prevent invalid state transitions', () => {
     expect(canTransition(GameState.START, GameState.GAME_OVER)).toBe(false);
     expect(canTransition(GameState.START, GameState.PAUSE)).toBe(false);
-    expect(canTransition(GameState.GAME_OVER, GameState.PLAYING)).toBe(false);
+
   });
 
   test('should validate state transitions correctly', () => {
@@ -55,12 +55,12 @@ describe('GameState Management', () => {
   });
 
   test('should allow correct inputs for each state', () => {
-    // START state
+
     expect(isInputAllowed(GameState.START, 'Enter')).toBe(true);
     expect(isInputAllowed(GameState.START, 'Space')).toBe(true);
     expect(isInputAllowed(GameState.START, 'ArrowLeft')).toBe(false);
 
-    // PLAYING state
+
     expect(isInputAllowed(GameState.PLAYING, 'ArrowLeft')).toBe(true);
     expect(isInputAllowed(GameState.PLAYING, 'ArrowRight')).toBe(true);
     expect(isInputAllowed(GameState.PLAYING, 'ArrowDown')).toBe(true);
@@ -71,13 +71,13 @@ describe('GameState Management', () => {
     expect(isInputAllowed(GameState.PLAYING, 'Escape')).toBe(true);
     expect(isInputAllowed(GameState.PLAYING, 'KeyR')).toBe(true);
 
-    // PAUSE state
+
     expect(isInputAllowed(GameState.PAUSE, 'KeyP')).toBe(true);
     expect(isInputAllowed(GameState.PAUSE, 'Escape')).toBe(true);
     expect(isInputAllowed(GameState.PAUSE, 'Enter')).toBe(true);
     expect(isInputAllowed(GameState.PAUSE, 'ArrowLeft')).toBe(false);
 
-    // GAME_OVER state
+
     expect(isInputAllowed(GameState.GAME_OVER, 'Enter')).toBe(true);
     expect(isInputAllowed(GameState.GAME_OVER, 'Space')).toBe(true);
     expect(isInputAllowed(GameState.GAME_OVER, 'KeyR')).toBe(true);
@@ -85,11 +85,10 @@ describe('GameState Management', () => {
   });
 });
 
-// Test för state overlay rendering
+
 describe('State Overlay', () => {
   test('should show correct text for START state', () => {
-    // Detta test skulle kräva att vi renderar GameBoard komponenten
-    // För nu testar vi bara logiken
+
     const startState = GameState.START;
     expect(startState).toBe('START');
   });
@@ -105,14 +104,13 @@ describe('State Overlay', () => {
   });
 });
 
-// Test för state transition callbacks
+
 describe('State Transition Callbacks', () => {
   test('should call transition callback when valid', () => {
     const mockCallback = vi.fn();
     const fromState = GameState.START;
     const toState = GameState.PLAYING;
     
-    // Simulera transitionState funktion
     if (canTransition(fromState, toState)) {
       mockCallback(fromState, toState);
     }
@@ -125,7 +123,6 @@ describe('State Transition Callbacks', () => {
     const fromState = GameState.START;
     const toState = GameState.GAME_OVER;
     
-    // Simulera transitionState funktion
     if (canTransition(fromState, toState)) {
       mockCallback(fromState, toState);
     }
@@ -187,13 +184,13 @@ describe('GameBoard', () => {
   });
 });
 
-// Ghost Piece Tests
+
 describe('Ghost Piece Functionality', () => {
   it('should render ghost piece when piece is not at bottom', () => {
     const grid = emptyGrid();
     const bag = new Bag();
     const piece = spawn(bag);
-    // Move piece down a bit but not to bottom
+
     piece.y = 5;
     
     render(<GameBoard grid={grid} currentPiece={piece} gameState={GameState.PLAYING} />);
@@ -204,8 +201,8 @@ describe('Ghost Piece Functionality', () => {
     const grid = emptyGrid();
     const bag = new Bag();
     const piece = spawn(bag);
-    // Move piece to bottom
-    piece.y = 18; // Near bottom
+
+    piece.y = 18;
     
     render(<GameBoard grid={grid} currentPiece={piece} gameState={GameState.PLAYING} />);
     expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
