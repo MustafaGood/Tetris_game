@@ -16,6 +16,7 @@ Ett komplett och moderniserat Tetris-spel byggt med React, TypeScript, Node.js o
 - [Spelkontroller](#spelkontroller)
 - [Poängsystem](#poängsystem)
 - [Utveckling](#utveckling)
+- [Framtida utveckling](#framtida-utveckling)
 - [Felsökning](#felsökning)
 - [Projektstruktur](#projektstruktur)
 - [Bidrag](#bidrag)
@@ -236,6 +237,16 @@ VITE_API_BASE=http://localhost:3001
 VITE_APP_NAME=Tetris Game
 VITE_APP_VERSION=2.0.0
 ```
+
+## Framtida utveckling
+
+Det här projektet fungerar redan som ett komplett Tetris-spel med frontend, backend och databas, men det finns flera möjliga förbättringar för framtiden:
+
+1. **Multiplayer-läge online** – låta flera spelare tävla mot varandra i realtid.  
+2. **Autentisering och leaderboard** – införa användarkonton, inloggning och en global highscore-lista.  
+3. **AI-spelare** – utveckla en bot som kan spela Tetris automatiskt, antingen som motståndare eller för analys.  
+4. **PWA och offline-stöd** – göra spelet helt spelbart utan internet och synka poäng när nätverk finns.  
+5. **Testning och säkerhet** – fler automatiserade tester, bättre anti-fusk-kontroller och en skalbar backend.
 
 ## Felsökning
 
