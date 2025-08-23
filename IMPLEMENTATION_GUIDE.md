@@ -59,8 +59,8 @@ npm run dev
 
 **Förväntad output:**
 ```
-Local:   http://localhost:5173/
-Network: http://192.168.x.x:5173/
+Local:   http://localhost:3000/
+Network: http://192.168.x.x:3000/
 ```
 
 ## **API Endpoints**

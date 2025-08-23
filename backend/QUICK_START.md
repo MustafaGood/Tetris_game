@@ -26,7 +26,7 @@ NODE_ENV=development
 PORT=3001
 
 # Tillåten origin för frontend-utvecklingsservern (Vite)
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:3000
 ```
 
 ### 3. Starta backend-servern

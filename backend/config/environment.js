@@ -1,4 +1,4 @@
- import dotenv from 'dotenv';
+const dotenv = require('dotenv');
 
 /*
  Konfigurationsmodul för backend:
@@ -21,7 +21,7 @@ const config = {
     if (getNodeEnv() === 'test') return 'mongodb://127.0.0.1:27017/tetris-test';
     return 'mongodb://127.0.0.1:27017/tetris-dev';
   },
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173',
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   SCORE_LIMIT_WINDOW_MS: parseInt(process.env.SCORE_LIMIT_WINDOW_MS) || 60 * 1000,
@@ -33,12 +33,18 @@ const config = {
   ADMIN_API_KEY: process.env.ADMIN_API_KEY,
 };
 
-export const isProduction = () => (process.env.NODE_ENV || 'development') === 'production';
-export const isDevelopment = () => (process.env.NODE_ENV || 'development') === 'development';
-export const isTest = () => (process.env.NODE_ENV || 'development') === 'test';
+const isProduction = () => (process.env.NODE_ENV || 'development') === 'production';
+const isDevelopment = () => (process.env.NODE_ENV || 'development') === 'development';
+const isTest = () => (process.env.NODE_ENV || 'development') === 'test';
 
-export const getCorsOrigins = () => {
+const getCorsOrigins = () => {
   return (config.CORS_ORIGIN || '').split(',').map(origin => origin.trim()).filter(Boolean);
 };
 
-export default config;
+module.exports = {
+  ...config,
+  isProduction,
+  isDevelopment,
+  isTest,
+  getCorsOrigins
+};

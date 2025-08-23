@@ -58,7 +58,7 @@ NODE_ENV=development
 PORT=3001
 
 # Frontend-origin för CORS
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:3000
 
 # SQLite-databasfil
 DB_PATH=./tetris.db

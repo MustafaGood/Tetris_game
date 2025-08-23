@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import config from '../config/environment.js';
+const crypto = require('crypto');
+const config = require('../config/environment.js');
 
 // Poängmultiplikatorer för olika rad-rensningar (grundvärden)
 const SCORE_MULTIPLIERS = {
@@ -16,7 +16,7 @@ const SCORE_MULTIPLIERS = {
 const LINES_PER_LEVEL = 10;
 
 // Generera en spel-seed (unik identifikator) för reproducerbara rundor
-export function generateGameSeed() {
+function generateGameSeed() {
   const timestamp = Date.now();
   const random = Math.random().toString(36).slice(2);
   return crypto.createHash('sha256')
@@ -26,12 +26,12 @@ export function generateGameSeed() {
 }
 
 // Validera formatet på en spel-seed: 16 hex-tecken
-export function validateGameSeed(seed) {
+function validateGameSeed(seed) {
   return typeof seed === 'string' && seed.length === 16 && /^[a-f0-9]+$/i.test(seed);
 }
 
 // Beräkna en förenklad förväntad poäng baserat på nivå, rader och speltid
-export function calculateExpectedScore({ level, lines, gameDuration }) {
+function calculateExpectedScore({ level, lines, gameDuration }) {
   let baseScore = 0;
 
   // Ge poäng beroende på hur många rader spelaren rensade totalt
@@ -53,7 +53,7 @@ export function calculateExpectedScore({ level, lines, gameDuration }) {
 }
 
 // Grundläggande validering av inskickad poäng
-export function validateScore({ name, points, level, lines, gameDuration, gameSeed }) {
+function validateScore({ name, points, level, lines, gameDuration, gameSeed }) {
   // Enkel namnvalidering
   if (!name || typeof name !== 'string' || !name.trim()) {
     return { isValid: false, reason: 'Invalid name' };
@@ -115,7 +115,7 @@ export function validateScore({ name, points, level, lines, gameDuration, gameSe
 }
 
 // Enkel analys för poängmönster för att hitta misstänkta avvikelser
-export function analyzeScorePattern(scores) {
+function analyzeScorePattern(scores) {
   const analysis = {
     suspicious: false,
     reasons: [],
@@ -153,7 +153,7 @@ export function analyzeScorePattern(scores) {
 }
 
 // Generera en hash för att verifiera poängdata (SHA256)
-export function generateScoreHash(scoreData) {
+function generateScoreHash(scoreData) {
   const dataString = JSON.stringify({
     name: scoreData.name,
     points: scoreData.points,
@@ -164,3 +164,13 @@ export function generateScoreHash(scoreData) {
 
   return crypto.createHash('sha256').update(dataString).digest('hex');
 }
+
+// Export all functions
+module.exports = {
+  generateGameSeed,
+  validateGameSeed,
+  calculateExpectedScore,
+  validateScore,
+  analyzeScorePattern,
+  generateScoreHash
+};

@@ -13,24 +13,7 @@ export default {
   // GRUNDLÄGGANDE INSTÄLLNINGAR
   // ============================================================================
   
-  // preset: 'default',           // Använd standard Jest-preset
   testEnvironment: 'node',     // Testmiljö för Node.js
-  
-  // ============================================================================
-  // ES MODULER STÖD
-  // ============================================================================
-  
-  // extensionsToTreatAsEsm: ['.js'], // Behandla .js-filer som ES-moduler
-  
-  // globals: {
-  //   'ts-jest': {
-  //     useESM: true,            // Använd ES-moduler med ts-jest
-  //   },
-  // },
-  
-  // moduleNameMapping: {
-  //   '^(\\.{1,2}/.*)\\.js$': '$1', // Mappa .js-filer till rätt sökvägar
-  // },
   
   // ============================================================================
   // KODTÄCKNING KONFIGURATION

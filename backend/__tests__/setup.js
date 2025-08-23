@@ -11,7 +11,7 @@
  * Jest will automatically load this file before running tests
  */
 
-import { jest } from '@jest/globals';
+// Jest globals are available automatically in test environment
 
 // ============================================================================
 // GLOBAL TEST SETUP OCH CLEANUP

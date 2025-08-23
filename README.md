@@ -93,7 +93,7 @@ npm run install:all
 cd backend
 echo "NODE_ENV=development" > .env
 echo "PORT=3001" >> .env
-echo "CORS_ORIGIN=http://localhost:5173" >> .env
+echo "CORS_ORIGIN=http://localhost:3000" >> .env
 
 # Frontend
 cd ../frontend
@@ -227,7 +227,7 @@ curl -X POST http://localhost:3001/api/scores \
 ```env
 PORT=3001
 NODE_ENV=development
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:3000
 ```
 
 #### Frontend (.env)
@@ -319,6 +319,6 @@ Detta projekt är öppen källkod och tillgängligt under [MIT-licensen](LICENSE
 
 ---
 
-**Spela nu på [http://localhost:5173](http://localhost:5173)**
+**Spela nu på [http://localhost:3000](http://localhost:3000)**
 
 *Lycka till med att nå nya highscores!* 

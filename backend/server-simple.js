@@ -43,7 +43,6 @@ app.use(
   cors({
     origin: [
       'http://localhost:3000',
-      'http://localhost:5173',
       'http://localhost:4173'
     ],
     credentials: false,
@@ -216,7 +215,7 @@ app.listen(PORT, () => {
   console.log('🔒 Säkerhet: Rate limiting, Helmet och CORS aktiverat');
   console.log('📝 Loggning: Morgan aktiverat');
   console.log('🗜️ Komprimering: Gzip aktiverat');
-  console.log('🎯 CORS Origins: http://localhost:3000, http://localhost:5173');
+  console.log('🎯 CORS Origins: http://localhost:3000');
 });
 
 export default app;

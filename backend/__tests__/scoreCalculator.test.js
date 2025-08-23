@@ -1,11 +1,11 @@
-import { 
+const { 
   generateGameSeed, 
   validateGameSeed, 
   calculateExpectedScore, 
   validateScore, 
   analyzeScorePattern, 
   generateScoreHash 
-} from '../utils/scoreCalculator.js';
+} = require('../utils/scoreCalculator.js');
 
 // Tester för poängberäkning och validering
 
