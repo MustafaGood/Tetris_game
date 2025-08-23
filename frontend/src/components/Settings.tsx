@@ -215,7 +215,7 @@ const Settings: React.FC<SettingsProps> = ({
                 />
               </div>
               <div className="text-xs text-gray-400 mt-1">
-                {nextPiecesCount === 1 ? 'Hard Mode' : nextPiecesCount >= 5 ? 'Easy Mode' : 'Normal Mode'}
+                {nextPiecesCount === 1 ? 'Hard Mode' : nextPiecesCount >= 2 ? 'Easy Mode' : 'Normal Mode'}
               </div>
             </div>
           )}

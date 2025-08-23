@@ -8,344 +8,228 @@
  * @version 1.0.0
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { 
-  emptyGrid, 
-  spawn, 
-  collide, 
-  merge, 
-  getFullRows, 
-  clearRows,
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import {
+  emptyGrid,
+  spawn,
+  Bag,
+  rotate,
+  collide,
+  merge,
+  clearLines,
+  calculateScore,
   rotateWithSRS,
   tickSpeed,
   calculateSoftDropScore,
   calculateHardDropScore,
   isTetris,
   isTSpin,
-  calculateTotalScore,
-  isGameOver,
   validateGrid,
   GameState,
   isInputAllowed,
   transitionState,
   saveLocalScore,
   isLocalHighscore,
-  type Grid,
-  type Cell,
-  type Piece
 } from '../tetris';
 
-// ============================================================================
-// HUVUDTESTSUIT
-// ============================================================================
+// Mock localStorage
+const localStorageMock = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
+};
 
-describe('Tetris Spellogik', () => {
-  let gameBoard: Grid;
-  let currentPiece: Piece | null;
+Object.defineProperty(window, 'localStorage', {
+  writable: true,
+  value: localStorageMock,
+});
 
-  /**
-   * Setup som körs före varje test
-   * Skapar en ren spelplan och pjäs för varje test
-   */
+describe('Tetris Game Logic', () => {
+  let gameBoard: any;
+  let currentPiece: any;
+  let bag: Bag;
+
   beforeEach(() => {
-    gameBoard = emptyGrid(); // Skapa tom spelplan
-    currentPiece = null;     // Ingen pjäs från början
-    vi.clearAllMocks();      // Rensa alla mocks
+    gameBoard = emptyGrid();
+    bag = new Bag();
+    currentPiece = spawn(bag);
   });
 
-  // ============================================================================
-  // SPELINITIALISERING TESTER
-  // ============================================================================
-
-  describe('Spelinitialisering', () => {
-    it('initialiserar med tom spelplan', () => {
-      // Kontrollera att spelplanen har rätt dimensioner
-      expect(gameBoard).toHaveLength(20); // 20 rader
-      expect(gameBoard[0]).toHaveLength(10); // 10 kolumner
-      
-      // Kontrollera att alla celler är tomma (0)
-      expect(gameBoard.every((row: Cell[]) => 
-        row.every((cell: Cell) => cell === 0)
-      )).toBe(true);
+  describe('Piece Movement', () => {
+    test('should move piece left', () => {
+      const originalX = currentPiece.x;
+      currentPiece.x = originalX - 1;
+      expect(currentPiece.x).toBe(originalX - 1);
     });
 
-    it('startar med nivå 1', () => {
-      // Simulera spelstart med nivå 1
-      const expectedLevel = 1;
-      expect(expectedLevel).toBe(1);
+    test('should move piece right', () => {
+      const originalX = currentPiece.x;
+      currentPiece.x = originalX + 1;
+      expect(currentPiece.x).toBe(originalX + 1);
     });
 
-    it('startar med poäng 0', () => {
-      // Simulera startpoäng
-      const initialScore = 0;
-      expect(initialScore).toBe(0);
+    test('should move piece down', () => {
+      const originalY = currentPiece.y;
+      currentPiece.y = originalY + 1;
+      expect(currentPiece.y).toBe(originalY + 1);
     });
 
-    it('startar med 0 rader', () => {
-      // Kontrollera att inga rader är fyllda från början
-      expect(gameBoard).toHaveLength(20);
-      
-      // Räkna fyllda rader
-      const filledRows = gameBoard.filter((row: Cell[]) => 
-        row.some((cell: Cell) => cell !== 0)
-      );
-      expect(filledRows).toHaveLength(0);
-    });
-  });
-
-  // ============================================================================
-  // PJÄSRÖRELSE TESTER
-  // ============================================================================
-
-  describe('Pjäsrörelse', () => {
-    it('flyttar pjäs vänster', () => {
-      // Skapa en testpjäs
-      currentPiece = { id: 1, r: 0, x: 4, y: 0 }; // Mock-pjäs
-      if (!currentPiece) return;
-      
-      const initialState = { ...currentPiece };
-      const initialX = initialState.x;
-      
-      // Simulera vänsterrörelse (minskning av x-koordinat)
-      const newX = initialX - 1;
-      
-      // Kontrollera att x-koordinaten har minskat
-      expect(newX).toBeLessThan(initialX);
-    });
-
-    it('flyttar pjäs höger', () => {
-      // Skapa en testpjäs
-      currentPiece = spawn();
-      if (!currentPiece) return;
-      
-      const initialState = { ...currentPiece };
-      const initialX = initialState.x;
-      
-      // Simulera högerrörelse (ökning av x-koordinat)
-      const newX = initialX + 1;
-      
-      // Kontrollera att x-koordinaten har ökat
-      expect(newX).toBeGreaterThan(initialX);
-    });
-
-    it('roterar pjäs', () => {
-      // Skapa en testpjäs
-      currentPiece = spawn();
-      if (!currentPiece) return;
-      
-      const initialState = { ...currentPiece };
-      const initialRotation = initialState.r;
-      
-      // Simulera rotation (ändring av rotationsvärde)
-      const newRotation = (initialRotation + 1) % 4; // 4 rotationer (0-3)
-      
-      // Kontrollera att rotationen har ändrats
-      expect(newRotation).not.toBe(initialRotation);
-    });
-
-    it('låter pjäs falla ner', () => {
-      // Skapa en testpjäs
-      currentPiece = spawn();
-      if (!currentPiece) return;
-      
-      const initialState = { ...currentPiece };
-      const initialY = initialState.y;
-      
-      // Simulera fall (ökning av y-koordinat)
-      const newY = initialY + 1;
-      
-      // Kontrollera att y-koordinaten har ökat
-      expect(newY).toBeGreaterThan(initialY);
-    });
-  });
-
-  // ============================================================================
-  // KOLLISIONSDETEKTERING TESTER
-  // ============================================================================
-
-  describe('Kollisionsdetektering', () => {
-    it('förhindrar vänsterrörelse vid vänsterkant', () => {
-      // Skapa en testpjäs vid vänsterkanten
-      currentPiece = { id: 1, r: 0, x: 0, y: 0 };
-      
-      // Försök flytta vänster från kanten
+    test('should not move piece through walls', () => {
+      // Move piece to left edge
+      currentPiece.x = 0;
       const newX = Math.max(0, currentPiece.x - 1);
-      
-      // Kontrollera att pjäsen inte kan gå utanför vänsterkanten
-      expect(newX).toBeGreaterThanOrEqual(0);
+      expect(newX).toBe(0);
     });
 
-    it('förhindrar högerrörelse vid högerkant', () => {
-      // Skapa en testpjäs vid högerkanten
-      currentPiece = { id: 1, r: 0, x: 9, y: 0 };
-      
-      // Försök flytta höger från kanten
-      const newX = Math.min(9, currentPiece.x + 1);
-      
-      // Kontrollera att pjäsen inte kan gå utanför högerkanten
-      expect(newX).toBeLessThan(10);
-    });
-
-    it('förhindrar rotation som skulle orsaka kollision', () => {
-      // Skapa en testpjäs
-      currentPiece = spawn();
-      if (!currentPiece) return;
-      
-      // Skapa en testplan med hinder
-      const testBoard: Grid = gameBoard.map((row: Cell[], y: number) => 
-        y >= 18 ? row.map(() => 1 as Cell) : row
-      );
-      
-      // Simulera kollisionsdetektering
-      const wouldCollide = true; // Simulera att rotation skulle orsaka kollision
-      
-      if (wouldCollide) {
-        // Rotation ska inte ske om det orsakar kollision
-        const initialRotation = currentPiece.r;
-        expect(initialRotation).toBe(currentPiece.r);
-      }
+    test('should not move piece through floor', () => {
+      // Move piece to bottom
+      currentPiece.y = 19;
+      const newY = Math.min(19, currentPiece.y + 1);
+      expect(newY).toBe(19);
     });
   });
 
-  // ============================================================================
-  // RADRENSNING TESTER
-  // ============================================================================
-
-  describe('Radrensning', () => {
-    it('rensar fyllda rader', () => {
-      // Skapa en testplan med en fylld rad
-      const testBoard: Grid = gameBoard.map((row: Cell[], y: number) => 
-        y === 19 ? row.map(() => 1 as Cell) : row
-      );
-      
-      // Simulera radrensning
-      const fullRows = getFullRows(testBoard);
-      expect(fullRows.length).toBeGreaterThan(0);
-      
-      // Rensa de fyllda raderna
-      clearRows(testBoard, fullRows);
-      
-      // Kontrollera att raden har rensats
-      const bottomRow = testBoard[19];
-      expect(bottomRow.every((cell: Cell) => cell === 0)).toBe(true);
+  describe('Piece Rotation', () => {
+    test('should rotate piece clockwise', () => {
+      const originalRotation = currentPiece.r;
+      const rotatedPiece = rotate(currentPiece, 1);
+      expect(rotatedPiece.r).not.toEqual(originalRotation);
     });
 
-    it('uppdaterar poäng när rader rensas', () => {
-      // Simulera poängberäkning för radrensning
-      const initialScore = 0;
-      const linesCleared = 1;
-      
-      // Beräkna ny poäng
-      const lineScore = calculateTotalScore(linesCleared, 1, false, false);
-      
-      // Kontrollera att poängen har ökat
-      expect(lineScore).toBeGreaterThan(initialScore);
+    test('should not rotate piece if it would collide', () => {
+      // Place piece near right edge
+      currentPiece.x = 8;
+      const rotatedPiece = rotate(currentPiece, 1);
+      // Should not rotate if it would go out of bounds
+      expect(rotatedPiece.x).toBe(currentPiece.x);
     });
   });
 
-  // ============================================================================
-  // POÄNGSYSTEM TESTER
-  // ============================================================================
-
-  describe('Poängsystem', () => {
-    it('ökar poäng för enskild radrensning', () => {
-      // Simulera enskild radrensning
-      const initialScore = 0;
-      const linesCleared = 1;
-      const level = 1;
-      
-      // Beräkna poäng för radrensning
-      const scoreIncrease = calculateTotalScore(linesCleared, level, false, false);
-      
-      // Kontrollera att poängen har ökat
-      expect(scoreIncrease).toBeGreaterThan(initialScore);
+  describe('Collision Detection', () => {
+    test('should detect collision with walls', () => {
+      currentPiece.x = -1;
+      expect(collide(gameBoard, currentPiece)).toBe(true);
     });
 
-    it('ökar nivå baserat på rensade rader', () => {
-      // Simulera nivåökning
-      const initialLevel = 1;
-      const linesCleared = 10; // Tillräckligt för nivåökning
+    test('should detect collision with floor', () => {
+      currentPiece.y = 20;
+      expect(collide(gameBoard, currentPiece)).toBe(true);
+    });
+
+    test('should detect collision with other pieces', () => {
+      // Place a piece on the board
+      const placedPiece = spawn(bag);
+      placedPiece.y = 18;
+      merge(gameBoard, placedPiece);
       
-      // Beräkna ny nivå (var 10:e rad ökar nivån)
-      const newLevel = Math.floor(linesCleared / 10) + initialLevel;
-      
-      // Kontrollera att nivån har ökat
-      if (linesCleared >= 10) {
-        expect(newLevel).toBeGreaterThan(initialLevel);
-      }
+      // Try to place another piece in the same area
+      currentPiece.y = 18;
+      expect(collide(gameBoard, currentPiece)).toBe(true);
     });
   });
 
-  // ============================================================================
-  // SPEL ÖVER DETEKTERING TESTER
-  // ============================================================================
-
-  describe('Spel över detektering', () => {
-    it('detekterar spel över när pjäs når toppen', () => {
-      // Skapa en testplan fylld till toppen
-      const testBoard: Grid = gameBoard.map((row: Cell[], y: number) => 
-        y <= 1 ? row.map(() => 1 as Cell) : row
-      );
-      
-      // Simulera spel över-detektering
-      const gameOver = isGameOver(testBoard);
-      
-      // Kontrollera att spelet är över
-      expect(gameOver).toBe(true);
-    });
-  });
-
-  // ============================================================================
-  // HÅLL-FUNKTIONALITET TESTER
-  // ============================================================================
-
-  describe('Håll-funktionalitet', () => {
-    it('håller aktuell pjäs', () => {
-      // Skapa en testpjäs
-      currentPiece = spawn();
-      if (!currentPiece) return;
-      
-      // Simulera håll-funktionalitet
-      const heldPiece = { ...currentPiece };
-      
-      // Kontrollera att pjäsen sparas
-      expect(heldPiece).toEqual(currentPiece);
-    });
-
-    it('byter hållen pjäs med aktuell pjäs', () => {
-      // Skapa två testpjäser
-      const piece1 = spawn();
-      const piece2 = spawn();
-      if (!piece1 || !piece2) return;
-      
-      // Simulera byte av pjäser
-      const swappedPiece = piece1;
-      const currentPiece = piece2;
-      
-      // Kontrollera att pjäser har bytts
-      expect(swappedPiece).not.toEqual(currentPiece);
-    });
-  });
-
-  // ============================================================================
-  // PRESTANDA TESTER
-  // ============================================================================
-
-  describe('Prestanda', () => {
-    it('behåller 60fps spelloop', () => {
-      const startTime = performance.now();
-      
-      // Simulera 60 speluppdateringar
-      for (let i = 0; i < 60; i++) {
-        // Simulera spellogik-uppdatering
-        Math.random(); // Simulera beräkningar
+  describe('Line Clearing', () => {
+    test('should clear completed lines', () => {
+      // Fill a line completely
+      for (let x = 0; x < 10; x++) {
+        gameBoard[19][x] = 1;
       }
       
-      const endTime = performance.now();
-      const totalTime = endTime - startTime;
+      const linesCleared = clearLines(gameBoard);
+      expect(linesCleared).toBe(1);
       
-      // Ska slutföra 60 uppdateringar på mindre än 1 sekund
-      expect(totalTime).toBeLessThan(1000);
+      // Check that the line is now empty
+      for (let x = 0; x < 10; x++) {
+        expect(gameBoard[19][x]).toBe(0);
+      }
+    });
+
+    test('should clear multiple lines', () => {
+      // Fill two lines completely
+      for (let y = 18; y < 20; y++) {
+        for (let x = 0; x < 10; x++) {
+          gameBoard[y][x] = 1;
+        }
+      }
+      
+      const linesCleared = clearLines(gameBoard);
+      expect(linesCleared).toBe(2);
+    });
+
+    test('should not clear incomplete lines', () => {
+      // Fill only part of a line
+      for (let x = 0; x < 5; x++) {
+        gameBoard[19][x] = 1;
+      }
+      
+      const linesCleared = clearLines(gameBoard);
+      expect(linesCleared).toBe(0);
+    });
+  });
+
+  describe('Score Calculation', () => {
+    test('should calculate score for single line', () => {
+      const score = calculateScore(1, 1);
+      expect(score).toBeGreaterThan(0);
+    });
+
+    test('should calculate score for multiple lines', () => {
+      const score = calculateScore(4, 1);
+      expect(score).toBeGreaterThan(0);
+    });
+
+    test('should calculate higher score for higher levels', () => {
+      const scoreLevel1 = calculateScore(1, 1);
+      const scoreLevel5 = calculateScore(1, 5);
+      expect(scoreLevel5).toBeGreaterThan(scoreLevel1);
+    });
+  });
+
+  describe('Game State Management', () => {
+    test('should allow valid state transitions', () => {
+      expect(transitionState(GameState.START, GameState.PLAYING)).toBe(GameState.PLAYING);
+      expect(transitionState(GameState.PLAYING, GameState.PAUSE)).toBe(GameState.PAUSE);
+      expect(transitionState(GameState.PAUSE, GameState.PLAYING)).toBe(GameState.PLAYING);
+    });
+
+    test('should prevent invalid state transitions', () => {
+      expect(transitionState(GameState.START, GameState.GAME_OVER)).toBe(null);
+      expect(transitionState(GameState.START, GameState.PAUSE)).toBe(null);
+    });
+
+    test('should validate input permissions', () => {
+      expect(isInputAllowed(GameState.START, 'Enter')).toBe(true);
+      expect(isInputAllowed(GameState.START, 'ArrowLeft')).toBe(false);
+      expect(isInputAllowed(GameState.PLAYING, 'ArrowLeft')).toBe(true);
+    });
+  });
+
+  describe('Local Storage', () => {
+    test('should save local score', () => {
+      const score = {
+        playerName: 'TestPlayer',
+        score: 1000,
+        level: 1,
+        lines: 10,
+        date: new Date().toISOString()
+      };
+      saveLocalScore(score);
+      expect(localStorageMock.setItem).toHaveBeenCalled();
+    });
+
+    test('should check if score is local highscore', () => {
+      // Mock localStorage to return a proper JSON array of scores
+      const mockScores = [
+        { id: 1, playerName: 'Player1', score: 500, level: 1, lines: 5, date: '2024-01-01' },
+        { id: 2, playerName: 'Player2', score: 300, level: 1, lines: 3, date: '2024-01-01' }
+      ];
+      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockScores));
+      
+      const isHighscore = isLocalHighscore(1000);
+      expect(isHighscore).toBe(true);
     });
   });
 });

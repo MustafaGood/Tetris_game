@@ -50,9 +50,9 @@ const SidePanel: React.FC<SidePanelProps> = ({
 
       {/* Next Pieces */}
       <div className="bg-gray-800 p-4 rounded-xl border border-gray-600">
-        <h3 className="text-white font-bold text-lg mb-3 text-center">Next (5)</h3>
+        <h3 className="text-white font-bold text-lg mb-3 text-center">Next (2)</h3>
         <div className="flex flex-col gap-2">
-          {next.slice(0, 5).map((pieceId, index) => (
+          {next.slice(0, 2).map((pieceId, index) => (
             <div key={index} className="flex justify-center">
               <MiniPreview pieceId={pieceId} size={4} />
             </div>

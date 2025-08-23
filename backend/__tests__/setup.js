@@ -6,6 +6,9 @@
  * 
  * @author Tetris Development Team
  * @version 1.0.0
+ * 
+ * NOTE: This file is NOT a test file - it's a setup file for Jest
+ * Jest will automatically load this file before running tests
  */
 
 import { jest } from '@jest/globals';
@@ -181,7 +184,6 @@ global.rateLimitUtils = {
     resetAll: jest.fn()     // Återställ alla räknare
   })
 };
-
 // ============================================================================
 // EXPORT AV VERKTYG FÖR ANVÄNDNING I ANDRA TESTFILER
 // ============================================================================
@@ -189,3 +191,4 @@ global.rateLimitUtils = {
 // Export av verktyg för användning i andra testfiler
 // Notera: Dessa är redan tillgängliga som globala objekt
 // men kan importeras explicit om så önskas
+

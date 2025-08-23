@@ -83,13 +83,13 @@ export default function GameOver({
       };
 
       // Debug-logg (ofarlig): visar payload i konsolen vid utveckling
-      console.log('🔍 Debug - Score payload being sent:', scorePayload);
+      console.log('Debug - Score payload being sent:', scorePayload);
 
       const result = await submitScore(scorePayload);
 
       if (result.success) {
         // Lyckad spara: visa feedback, uppdatera topplista och spara lokalt
-        setSaveMessage('✅ Poäng sparade!');
+        setSaveMessage('Poäng sparade!');
         setShowNameInput(false);
         
         if (onScoreSaved) {
@@ -106,15 +106,15 @@ export default function GameOver({
         }, 3000);
       } else {
         // Servern svarade med ett felmeddelande
-        setSaveMessage(`❌ Fel: ${result.message}`);
+        setSaveMessage(`Fel: ${result.message}`);
         
         if (result.message?.includes('validation failed') || result.message?.includes('Name must be')) {
-          setValidationMessage('🛡️ Validering misslyckades - kontrollera dina uppgifter');
+          setValidationMessage('Validering misslyckades - kontrollera dina uppgifter');
         }
       }
     } catch (error) {
       // Nätverks- eller serverfel
-      setSaveMessage('❌ Fel: Kunde inte ansluta till servern');
+              setSaveMessage('Fel: Kunde inte ansluta till servern');
       console.error('Misslyckades att skicka score till server:', error);
     }
   };
@@ -223,7 +223,7 @@ export default function GameOver({
 
         {saveMessage && (
           <div className={`mb-4 p-3 rounded-lg text-center ${
-            saveMessage.includes('✅') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+            saveMessage.includes('Poäng sparade!') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
           }`}>
             {saveMessage}
           </div>
@@ -238,7 +238,7 @@ export default function GameOver({
         {isLocalHighscore && !backendConnected && (
           <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
             <p className="text-yellow-400 text-center">
-              🏆 Ny lokal highscore! (Ingen anslutning till servern)
+              Ny lokal highscore! (Ingen anslutning till servern)
             </p>
           </div>
         )}

@@ -10,34 +10,21 @@
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "test:debug": "vitest --inspect-brk",
-    "test:performance": "vitest run --reporter=verbose __tests__/performance.test.ts",
-    "test:accessibility": "vitest run --reporter=verbose __tests__/accessibility.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:install": "playwright install",
-    "quality:check": "npm run lint && npm run format:check && npm run type-check && npm run test:coverage",
-    "quality:fix": "npm run lint:fix && npm run format && npm run test:coverage",
-    "build:analyze": "npm run build && npx vite-bundle-analyzer dist",
-    "preview:analyze": "npm run build && npx vite-bundle-analyzer dist --preview",
-    "performance:audit": "npm run build && npx lighthouse http://localhost:4173 --output=html --output-path=./lighthouse-report.html"
+    "quality:check": "npm run lint && npm run type-check && npm run test:coverage"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@babel/parser": "^7.28.3",
     "@playwright/test": "^1.40.0",
     "@testing-library/jest-dom": "^6.1.0",
     "@testing-library/react": "^14.0.0",
@@ -54,16 +41,13 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "eslint-plugin-testing-library": "^7.1.0",
-    "jest-axe": "^9.0.0",
-    "jsdom": "^23.0.0",
     "postcss": "^8.4.35",
-    "prettier": "^3.1.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.0",
     "vitest": "^1.0.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   }
 }

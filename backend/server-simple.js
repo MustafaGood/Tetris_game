@@ -19,9 +19,21 @@ app.use(
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"]
       }
+    },
+    xFrameOptions: { action: 'deny' },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true
     }
   })
 );
+
+// Lägg till X-XSS-Protection header
+app.use((req, res, next) => {
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Komprimering för att minska svarsstorlek
 app.use(compression());
@@ -31,7 +43,8 @@ app.use(
   cors({
     origin: [
       'http://localhost:3000',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      'http://localhost:4173'
     ],
     credentials: false,
     methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],

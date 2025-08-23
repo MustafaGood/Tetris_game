@@ -197,7 +197,7 @@ export default function Leaderboard({
     if (error) {
       return (
         <div className="text-center py-8">
-          <div className="text-red-400 mb-4">❌ {error}</div>
+          <div className="text-red-400 mb-4">{error}</div>
           <button
             onClick={() => {
               clearError();
@@ -312,14 +312,14 @@ export default function Leaderboard({
     <div className="min-h-screen p-4 relative z-10">
       <div className="max-w-4xl mx-auto">
         <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
-          <h2 className="text-3xl font-bold text-white mb-6 text-center">🏆 Highscores</h2>
+          <h2 className="text-3xl font-bold text-white mb-6 text-center">Highscores</h2>
           
           <Fragment key="content-container">
             {/* Backend-status */}
             {backendConnected === false && (
               <div key="backend-status" className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
                 <p className="text-red-400 text-center">
-                  ⚠️ Ingen anslutning till servern - endast lokala highscores visas
+                  Ingen anslutning till servern - endast lokala highscores visas
                 </p>
               </div>
             )}

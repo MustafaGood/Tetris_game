@@ -102,7 +102,7 @@ echo "VITE_API_BASE=http://localhost:3001" > .env
 # Starta frontend-utvecklingsservern
 npm run dev
 
-# Frontend körs som standard på http://localhost:5173
+# Frontend körs som standard på http://localhost:3000
 # Kontrollera att CORS_ORIGIN i backend/.env matchar denna URL
 ```
 

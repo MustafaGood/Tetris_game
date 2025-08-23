@@ -14,7 +14,7 @@ const Help: React.FC<HelpProps> = ({ onBack }) => {
           {/* Game Instructions */}
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">🎮 Hur man spelar</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Hur man spelar</h3>
               <div className="space-y-3 text-gray-300">
                 <p>• Rotera och flytta fallande pjäser för att skapa kompletta rader</p>
                 <p>• När en rad blir full, försvinner den och ger poäng</p>
@@ -25,7 +25,7 @@ const Help: React.FC<HelpProps> = ({ onBack }) => {
             </div>
 
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">🏆 Poängsystem</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Poängsystem</h3>
               <div className="space-y-2 text-gray-300">
                 <p><strong>Single:</strong> 100 × nivå</p>
                 <p><strong>Double:</strong> 300 × nivå</p>
@@ -40,7 +40,7 @@ const Help: React.FC<HelpProps> = ({ onBack }) => {
             </div>
 
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">📈 Nivåer</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Nivåer</h3>
               <div className="space-y-2 text-gray-300">
                 <p>• Nivån ökar var 10:e raderade rad</p>
                 <p>• Högre nivå = snabbare fallande pjäser</p>
@@ -52,7 +52,7 @@ const Help: React.FC<HelpProps> = ({ onBack }) => {
           {/* Keyboard Controls */}
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">⌨️ Tangentbordskontroller</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Tangentbordskontroller</h3>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="bg-gray-700 p-2 rounded">
@@ -92,7 +92,7 @@ const Help: React.FC<HelpProps> = ({ onBack }) => {
             </div>
 
             <div>
-              <h3 className="text-xl font-bold text-white mb-3">🎯 Avancerade tekniker</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Avancerade tekniker</h3>
               <div className="space-y-3 text-gray-300">
                 <div>
                   <p className="font-semibold text-yellow-400">T-Spin</p>

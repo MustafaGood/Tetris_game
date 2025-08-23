@@ -37,8 +37,7 @@ describe('GameOver', () => {
     expect(screen.getByText('Game Over')).toBeInTheDocument();
     // Förväntar att poäng, nivå och rader visas korrekt
     expect(screen.getByText('1000')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('25')).toBeInTheDocument();
+    expect(screen.getByText(/Nivå 5 • 25 rader/)).toBeInTheDocument();
   });
 
   // Test: när backend är ansluten ska knappen för att spara poäng synas
@@ -46,7 +45,7 @@ describe('GameOver', () => {
     render(<GameOver {...mockProps} />);
     
     // Knappen för att spara poäng (svensk text i UI:t)
-    expect(screen.getByText('Spara poäng')).toBeInTheDocument();
+    expect(screen.getByText('Spara poäng online')).toBeInTheDocument();
   });
 
   // Test: när backend inte är ansluten ska spara-knappen inte visas
@@ -54,6 +53,6 @@ describe('GameOver', () => {
     render(<GameOver {...mockProps} backendConnected={false} />);
     
     // queryByText returnerar null om elementet inte finns
-    expect(screen.queryByText('Spara poäng')).not.toBeInTheDocument();
+    expect(screen.queryByText('Spara poäng online')).not.toBeInTheDocument();
   });
 });

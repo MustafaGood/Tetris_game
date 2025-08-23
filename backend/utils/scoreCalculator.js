@@ -140,9 +140,9 @@ export function analyzeScorePattern(scores) {
   }
 
   // Kontrollera frekvens: för många resultat på 24 timmar kan vara misstänkt
-  const recentScores = scores.filter(s =>
-    new Date(s.createdAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-  );
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const recentScores = scores.filter(s => new Date(s.createdAt) > oneDayAgo);
 
   if (recentScores.length > 10) {
     analysis.suspicious = true;
@@ -152,14 +152,14 @@ export function analyzeScorePattern(scores) {
   return analysis;
 }
 
-// Generera en hash för att verifiera poängdata (enkel, icke-krypterad signatur)
+// Generera en hash för att verifiera poängdata (SHA256)
 export function generateScoreHash(scoreData) {
   const dataString = JSON.stringify({
     name: scoreData.name,
     points: scoreData.points,
     level: scoreData.level,
     lines: scoreData.lines,
-    timestamp: Date.now()
+    gameSeed: scoreData.gameSeed || 'default'
   });
 
   return crypto.createHash('sha256').update(dataString).digest('hex');

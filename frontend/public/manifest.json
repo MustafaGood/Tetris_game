@@ -1,0 +1,28 @@
+{
+  "name": "Tetris - Fullstack Demo",
+  "short_name": "Tetris",
+  "description": "Modernt Tetris-spel byggt med React, TypeScript och Tailwind CSS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "sv",
+  "categories": ["spel", "underhållning"],
+  "icons": [],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

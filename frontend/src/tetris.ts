@@ -368,7 +368,7 @@ export function calculateSoftDropScore(distance: number, level: number): number 
 }
 
 // Poäng för "hard drop" (direkt till golvet)
-export function calculateHardDropScore(distance: number, level: number): number {
+export function calculateHardDropScore(distance: number): number {
   return distance * 2;  // 2 poäng per cell (fast nivå påverkar inte)
 }
 

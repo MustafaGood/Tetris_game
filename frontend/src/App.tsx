@@ -155,7 +155,7 @@ export default function App() {
   });
   const [startLevel, setStartLevel] = useState(1);
   const [nextPiecesEnabled, setNextPiecesEnabled] = useState(true);
-  const [nextPiecesCount, setNextPiecesCount] = useState(5);
+  const [nextPiecesCount, setNextPiecesCount] = useState(2);
   const [highlightTetris, setHighlightTetris] = useState(false);
   const [showStrategyHints, setShowStrategyHints] = useState(false);
   
@@ -193,19 +193,19 @@ export default function App() {
 
 
   useEffect(() => {
-    setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
+    setNextIds([bag.next(), bag.next()]);
   }, [bag]);
 
 
     useEffect(() => {
     const runConnectionTest = async () => {
       if (connectionTestRef.current) {
-        console.log('🔄 Connection test already completed, skipping...');
+        console.log('Connection test already completed, skipping...');
         return;
       }
       
-      console.log('🚀 Starting backend connection test...');
-      console.log('🔍 Component mount count check...');
+      console.log('Starting backend connection test...');
+      console.log('Component mount count check...');
       connectionTestRef.current = true;
       
       setBackendConnected(null);
@@ -214,16 +214,16 @@ export default function App() {
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         try {
-          console.log(`🔄 Attempting to connect to backend...`);
+          console.log(`Attempting to connect to backend...`);
           const connected = await testConnection();
           if (connected) {
-            console.log('✅ Backend connection established successfully!');
+            console.log('Backend connection established successfully!');
           } else {
-            console.log('❌ Backend connection failed');
+            console.log('Backend connection failed');
           }
           return connected;
         } catch (error) {
-          console.warn(`⚠️ Connection attempt failed:`, error);
+          console.warn(`Connection attempt failed:`, error);
           return false;
         }
       };
@@ -231,7 +231,7 @@ export default function App() {
       const connected = await testBackendConnection();
       setBackendConnected(connected);
       if (!connected) {
-        console.log('ℹ️ Backend connection failed, continuing with local mode');
+        console.log('Backend connection failed, continuing with local mode');
       }
     };
     
@@ -261,7 +261,7 @@ export default function App() {
     const id = fromHold ?? nextIds[0];
     const rest = fromHold ? nextIds : nextIds.slice(1);
     const refill = [...rest];
-    while (refill.length < 5) refill.push(bag.next());
+    while (refill.length < 2) refill.push(bag.next());
     setNextIds(refill);
     const p = { id, r: 0, x: Math.floor(W/2) - 2, y: 0 };
     setCur(p);
@@ -283,7 +283,7 @@ export default function App() {
     
 
     if (dropDistance > 0) {
-      const dropScore = calculateHardDropScore(dropDistance, level);
+      const dropScore = calculateHardDropScore(dropDistance);
       setPoints(prev => prev + dropScore);
 
       sounds.playDrop();
@@ -512,7 +512,7 @@ export default function App() {
       setLockDelayTimer(null);
     }
     bag.reset();
-    setNextIds([bag.next(), bag.next(), bag.next(), bag.next(), bag.next()]);
+    setNextIds([bag.next(), bag.next()]);
   }, [bag, lockDelayTimer, startLevel]);
 
 
@@ -1045,7 +1045,7 @@ export default function App() {
           <div key="info-content" className="min-h-screen p-4 relative z-10">
             <div className="max-w-4xl mx-auto">
               <div className="bg-gray-800 p-8 rounded-xl border border-gray-600">
-                <h2 className="text-3xl font-bold text-white mb-6 text-center">ℹ️ Om Spelet</h2>
+                <h2 className="text-3xl font-bold text-white mb-6 text-center">Om Spelet</h2>
                 
                 <div className="space-y-6 text-gray-300">
                   <div>
@@ -1067,7 +1067,7 @@ export default function App() {
       </div>
 
       <div>
-                    <h3 className="text-xl font-bold text-white mb-2">🛠️ Teknisk Stack</h3>
+                    <h3 className="text-xl font-bold text-white mb-2">Teknisk Stack</h3>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <h4 className="font-bold text-white">Frontend</h4>

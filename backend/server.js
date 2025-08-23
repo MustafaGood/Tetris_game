@@ -7,19 +7,19 @@ import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Enkelt Express-backend som använder SQLite för att spara poäng
+// Express-backend som använder SQLite för att spara poäng
 // Koden innehåller grundläggande säkerhet, CORS och enkla REST-endpoints
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- Databas (SQLite) ---
+// Databas (SQLite)
 const dbPath = path.join(__dirname, 'tetris.db');
 const db = new sqlite3.Database(dbPath);
 
 // Säkerställer att tabeller och index finns
 db.serialize(() => {
-  console.log('🔧 Initierar databas...');
+  console.log('Initierar databas...');
   db.run(`
     CREATE TABLE IF NOT EXISTS scores (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,23 +31,22 @@ db.serialize(() => {
     )
   `, (err) => {
     if (err) {
-      console.error('❌ Fel vid skapande av scores-tabell:', err);
+      console.error('Fel vid skapande av scores-tabell:', err);
     } else {
-      console.log('✅ Scores-tabell klar');
+      console.log('Scores-tabell klar');
     }
   });
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_scores_points ON scores(points)`, (err) => {
     if (err) {
-      console.error('❌ Fel vid skapande av index:', err);
+      console.error('Fel vid skapande av index:', err);
     } else {
-      console.log('✅ Databasindex klart');
+      console.log('Databasindex klart');
     }
   });
 });
 
-
-// --- Express-app och middleware ---
+// Express-app och middleware
 // Skapar appen och registrerar middleware för säkerhet, prestanda och loggning
 const app = express();
 
@@ -62,7 +61,19 @@ app.use(helmet({
       connectSrc: ["'self'", "http://localhost:3001", "http://127.0.0.1:3001"],
     },
   },
+  xFrameOptions: { action: 'deny' },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
 }));
+
+// Lägg till X-XSS-Protection header
+app.use((req, res, next) => {
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Komprimerar svar för bättre prestanda
 app.use(compression());
@@ -108,14 +119,14 @@ app.get('/api/scores', (req, res) => {
     [limit],
     (err, rows) => {
       if (err) {
-        console.error('❌ Databasfel i GET /api/scores:', err);
+        console.error('Databasfel i GET /api/scores:', err);
         return res.status(500).json({
           ok: false,
           error: 'Databasfel',
           details: process.env.NODE_ENV === 'development' ? err.message : 'Internt serverfel'
         });
       }
-      console.log(`📊 Hämtade ${rows.length} poäng`);
+      console.log(`Hämtade ${rows.length} poäng`);
       res.json({
         ok: true,
         data: rows
@@ -133,14 +144,14 @@ app.get('/api/scores/top', (req, res) => {
     [limit],
     (err, rows) => {
       if (err) {
-        console.error('❌ Databasfel i GET /api/scores/top:', err);
+        console.error('Databasfel i GET /api/scores/top:', err);
         return res.status(500).json({
           ok: false,
           error: 'Databasfel',
           details: process.env.NODE_ENV === 'development' ? err.message : 'Internt serverfel'
         });
       }
-      console.log(`📊 Hämtade ${rows.length} top-poäng`);
+      console.log(`Hämtade ${rows.length} top-poäng`);
       res.json({
         ok: true,
         data: rows
@@ -198,14 +209,14 @@ app.post('/api/scores', (req, res) => {
     [sanitizedName, Math.floor(points), Math.floor(level), Math.floor(lines), now],
     function(err) {
       if (err) {
-        console.error('❌ Databasfel i POST /api/scores:', err);
+        console.error('Databasfel i POST /api/scores:', err);
         return res.status(500).json({
           ok: false,
           error: 'Databasfel',
           details: process.env.NODE_ENV === 'development' ? err.message : 'Internt serverfel'
         });
       }
-      console.log(`🏆 Poäng sparad: ${sanitizedName} - ${points} poäng`);
+      console.log(`Poäng sparad: ${sanitizedName} - ${points} poäng`);
       res.status(201).json({
         ok: true,
         data: {
@@ -235,7 +246,7 @@ app.delete('/api/scores/:id', (req, res) => {
     [scoreId],
     function(err) {
       if (err) {
-        console.error('❌ Databasfel i DELETE /api/scores:', err);
+        console.error('Databasfel i DELETE /api/scores:', err);
         return res.status(500).json({ 
           ok: false,
           error: 'Databasfel', 
@@ -250,7 +261,7 @@ app.delete('/api/scores/:id', (req, res) => {
         });
       }
 
-      console.log(`🗑️ Poäng raderad: ID ${scoreId}`);
+      console.log(`Poäng raderad: ID ${scoreId}`);
       res.json({ 
         ok: true, 
         data: {
@@ -268,7 +279,7 @@ app.get('/api/stats', (req, res) => {
     'SELECT COUNT(*) as totalScores, MAX(points) as highestScore, AVG(points) as averageScore FROM scores',
     (err, row) => {
       if (err) {
-        console.error('❌ Databasfel i GET /api/stats:', err);
+        console.error('Databasfel i GET /api/stats:', err);
         return res.status(500).json({ 
           ok: false,
           error: 'Databasfel', 
@@ -289,7 +300,7 @@ app.get('/api/stats', (req, res) => {
 
 
 app.use((err, req, res, next) => {
-  console.error('❌ Ohanterat fel:', err);
+  console.error('Ohanterat fel:', err);
   res.status(500).json({ 
     ok: false,
     error: 'Internt serverfel',
@@ -307,24 +318,24 @@ app.use('*', (req, res) => {
 
 
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM mottaget, stänger ner graciöst');
+  console.log('SIGTERM mottaget, stänger ner graciöst');
   db.close((err) => {
     if (err) {
-      console.error('❌ Fel vid stängning av databas:', err);
+      console.error('Fel vid stängning av databas:', err);
     } else {
-      console.log('✅ Databasanslutning stängd');
+      console.log('Databasanslutning stängd');
     }
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 SIGINT mottaget, stänger ner graciöst');
+  console.log('SIGINT mottaget, stänger ner graciöst');
   db.close((err) => {
     if (err) {
-      console.error('❌ Fel vid stängning av databas:', err);
+      console.error('Fel vid stängning av databas:', err);
     } else {
-      console.log('✅ Databasanslutning stängd');
+      console.log('Databasanslutning stängd');
     }
     process.exit(0);
   });
@@ -333,9 +344,12 @@ process.on('SIGINT', () => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Backend-servern startad!`);
-  console.log(`📡 Server lyssnar på http://localhost:${PORT}`);
-  console.log(`🏥 Hälsokontroll: http://localhost:${PORT}/api/health`);
-  console.log(`📊 Databas: ${dbPath}`);
-  console.log(`🌍 Miljö: ${process.env.NODE_ENV || 'development'}`);
-}); 
+  console.log(`Backend-servern startad!`);
+  console.log(`Server lyssnar på http://localhost:${PORT}`);
+  console.log(`Hälsokontroll: http://localhost:${PORT}/api/health`);
+  console.log(`Databas: ${dbPath}`);
+  console.log(`Miljö: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Export app for testing
+export default app; 

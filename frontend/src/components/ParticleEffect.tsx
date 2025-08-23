@@ -21,12 +21,23 @@ interface ParticleEffectProps {
 
 const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onComplete }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [shouldComplete, setShouldComplete] = useState(false);
   const calledRef = useRef(false); // Förhindra flera onComplete-anrop
+
+  // Handle completion separately to avoid setState warning
+  useEffect(() => {
+    if (shouldComplete && !calledRef.current) {
+      calledRef.current = true;
+      onComplete();
+      setShouldComplete(false);
+    }
+  }, [shouldComplete, onComplete]);
 
   useEffect(() => {
     if (!isActive) return;
 
     calledRef.current = false;
+    setShouldComplete(false);
 
     const newParticles: Particle[] = [];
     const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
@@ -60,9 +71,8 @@ const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onC
           .filter(particle => particle.life > 0);
 
         if (updated.length === 0 && !calledRef.current) {
-          calledRef.current = true;
-          // Kör callback när animationen är klar
-          onComplete();
+          // Signal completion instead of calling callback directly
+          setShouldComplete(true);
           return [];
         }
 
@@ -73,7 +83,7 @@ const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onC
     const interval = setInterval(animate, 16);
 
     return () => clearInterval(interval);
-  }, [isActive, position, onComplete]);
+  }, [isActive, position]);
 
   if (!isActive || particles.length === 0) return null;
 
@@ -82,7 +92,7 @@ const ParticleEffect: React.FC<ParticleEffectProps> = ({ isActive, position, onC
       {particles.map(particle => (
         <div
           key={particle.id}
-          className="absolute rounded-full"
+          className="absolute rounded-full glass"
           style={{
             left: particle.x,
             top: particle.y,

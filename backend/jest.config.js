@@ -13,24 +13,24 @@ export default {
   // GRUNDLÄGGANDE INSTÄLLNINGAR
   // ============================================================================
   
-  preset: 'default',           // Använd standard Jest-preset
+  // preset: 'default',           // Använd standard Jest-preset
   testEnvironment: 'node',     // Testmiljö för Node.js
   
   // ============================================================================
   // ES MODULER STÖD
   // ============================================================================
   
-  extensionsToTreatAsEsm: ['.js'], // Behandla .js-filer som ES-moduler
+  // extensionsToTreatAsEsm: ['.js'], // Behandla .js-filer som ES-moduler
   
-  globals: {
-    'ts-jest': {
-      useESM: true,            // Använd ES-moduler med ts-jest
-    },
-  },
+  // globals: {
+  //   'ts-jest': {
+  //     useESM: true,            // Använd ES-moduler med ts-jest
+  //   },
+  // },
   
-  moduleNameMapping: {
-    '^(\\.{1,2}/.*)\\.js$': '$1', // Mappa .js-filer till rätt sökvägar
-  },
+  // moduleNameMapping: {
+  //   '^(\\.{1,2}/.*)\\.js$': '$1', // Mappa .js-filer till rätt sökvägar
+  // },
   
   // ============================================================================
   // KODTÄCKNING KONFIGURATION
@@ -77,6 +77,10 @@ export default {
   testMatch: [
     '**/__tests__/**/*.{js,ts}',      // Testfiler i __tests__-mappar
     '**/?(*.)+(spec|test).{js,ts}'   // Testfiler med spec/test-suffix
+  ],
+  
+  testPathIgnorePatterns: [
+    '<rootDir>/__tests__/setup.js'   // Exclude setup file from tests
   ],
   
   testTimeout: 10000,          // 10 sekunder timeout per test

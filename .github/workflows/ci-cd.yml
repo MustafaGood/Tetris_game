@@ -1,0 +1,251 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  COVERAGE_THRESHOLD: '80'
+
+jobs:
+  # Lint and Test
+  quality-check:
+    name: Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+        
+      - name: Frontend lint check
+        working-directory: frontend
+        run: npm run lint
+        
+      - name: Frontend type check
+        working-directory: frontend
+        run: npm run type-check
+        
+      - name: Frontend format check
+        working-directory: frontend
+        run: npm run format:check
+        
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm run test:run
+        
+      - name: Frontend test coverage
+        working-directory: frontend
+        run: npm run test:coverage
+        
+      - name: Backend lint check
+        working-directory: backend
+        run: npm run lint
+        
+      - name: Backend tests
+        working-directory: backend
+        run: npm test
+        
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: |
+            frontend/coverage/lcov.info
+            backend/coverage/lcov.info
+          flags: |
+            frontend
+            backend
+          name: coverage-report
+
+  # Build and Deploy to GitHub Pages
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: quality-check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Build application
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
+      - name: Meddela deployment
+        run: |
+          echo "🚀 Applikationen har distribuerats framgångsrikt!"
+          echo "🌐 Frontend: ${{ steps.deployment.outputs.page_url }}"
+          echo "📱 PWA redo för installation"
+          echo "🔧 Backend: https://tetris-api.onrender.com"
+
+  # Performance Testing
+  performance:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    needs: quality-check
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+          
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+        
+      - name: Build application
+        working-directory: frontend
+        run: npm run build
+        
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: './frontend/.lighthouserc.json'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          
+      - name: Bundle analysis
+        working-directory: frontend
+        run: npm run build:analyze
+
+  # Security Scan
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Release Management
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [deploy, performance, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Generera changelog
+        id: changelog
+        run: |
+          echo "## Vad är nytt i v2.0.0" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### 🚀 Funktioner" >> CHANGELOG.md
+          echo "- PWA-stöd med offline-funktionalitet" >> CHANGELOG.md
+          echo "- Förbättrat ljudsystem med flera ljudeffekter" >> CHANGELOG.md
+          echo "- Förbättrade spelregler och poängsättning" >> CHANGELOG.md
+          echo "- Responsiv design för alla enheter" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### 🔧 Förbättringar" >> CHANGELOG.md
+          echo "- CI/CD-pipeline med automatiserad testning" >> CHANGELOG.md
+          echo "- Prestandaoptimeringar" >> CHANGELOG.md
+          echo "- Bättre felhantering och användarfeedback" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### 🐛 Bugfixar" >> CHANGELOG.md
+          echo "- Fixade problem med spelstatushantering" >> CHANGELOG.md
+          echo "- Lösning av problem med ljuduppspelning" >> CHANGELOG.md
+          echo "- Förbättrade mobila touch-kontroller" >> CHANGELOG.md
+          
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v2.0.0
+          release_name: Tetris v2.0.0 - PWA-utgåva
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: frontend/dist
+          asset_name: tetris-frontend-v2.0.0.zip
+          asset_content_type: application/zip
+
+# Cache configuration
+cache:
+  paths:
+    - '**/node_modules'
+    - '**/coverage'
+    - '**/.next'
+    - '**/dist'

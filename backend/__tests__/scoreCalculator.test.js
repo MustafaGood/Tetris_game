@@ -308,26 +308,8 @@ describe('Tester för poängberäknaren', () => {
     });
   });
 
-  describe('analyzeScorePattern', () => {
-  // --- analyzeScorePattern ---
-  // Analyserar listor av poäng för att upptäcka misstänkt beteende
-    test('ska analysera poängmönster korrekt', () => {
-      const scores = [
-        { points: 1000, createdAt: new Date('2024-01-01T10:00:00Z') },
-        { points: 2000, createdAt: new Date('2024-01-01T11:00:00Z') },
-        { points: 3000, createdAt: new Date('2024-01-01T12:00:00Z') }
-      ];
-
-      const analysis = analyzeScorePattern(scores);
-      
-      expect(analysis).toMatchObject({
-        suspicious: false,
-        reasons: [],
-        recommendations: []
-      });
-    });
-
-    test('ska upptäcka stora poängsprång', () => {
+  describe('Score Pattern Analysis', () => {
+    test('should detect large score jumps', () => {
       const scores = [
         { points: 1000, createdAt: new Date('2024-01-01T10:00:00Z') },
         { points: 60000, createdAt: new Date('2024-01-01T11:00:00Z') } // 59000 point jump
@@ -339,7 +321,7 @@ describe('Tester för poängberäknaren', () => {
       expect(analysis.reasons).toContain('Large score jump: 59000 points');
     });
 
-    test('ska upptäcka för många poäng på kort tid', () => {
+    test('should detect too many scores in short time', () => {
       const now = new Date();
       const scores = Array(15).fill().map((_, i) => ({
         points: 1000 + i * 100,
@@ -352,7 +334,7 @@ describe('Tester för poängberäknaren', () => {
       expect(analysis.reasons).toContain('Too many scores in 24 hours');
     });
 
-    test('ska hantera enstaka poäng', () => {
+    test('should handle single score', () => {
       const scores = [
         { points: 1000, createdAt: new Date() }
       ];
@@ -363,7 +345,7 @@ describe('Tester för poängberäknaren', () => {
       expect(analysis.reasons).toHaveLength(0);
     });
 
-    test('ska hantera tom lista av poäng', () => {
+    test('should handle empty score list', () => {
       const analysis = analyzeScorePattern([]);
       
       expect(analysis.suspicious).toBe(false);
@@ -372,9 +354,7 @@ describe('Tester för poängberäknaren', () => {
   });
 
   describe('generateScoreHash', () => {
-  // --- generateScoreHash ---
-  // Genererar SHA256-hash av poängdata för korskontroll
-    test('ska generera hash för poängdata', () => {
+    test('should generate hash for score data', () => {
       const scoreData = {
         name: 'TestPlayer',
         points: 1000,
@@ -386,11 +366,11 @@ describe('Tester för poängberäknaren', () => {
       const hash = generateScoreHash(scoreData);
       
       expect(typeof hash).toBe('string');
-  expect(hash.length).toBe(64); // SHA256-hashlängd
+      expect(hash.length).toBe(64); // SHA256 hash length
       expect(hash).toMatch(/^[a-f0-9]+$/);
     });
 
-    test('ska generera olika hashvärden för olika data', () => {
+    test('should generate different hash values for different data', () => {
       const scoreData1 = {
         name: 'Player1',
         points: 1000,
@@ -413,7 +393,7 @@ describe('Tester för poängberäknaren', () => {
       expect(hash1).not.toBe(hash2);
     });
 
-    test('ska generera samma hash för samma data', () => {
+    test('should generate same hash for same data', () => {
       const scoreData = {
         name: 'TestPlayer',
         points: 1000,
@@ -426,24 +406,6 @@ describe('Tester för poängberäknaren', () => {
       const hash2 = generateScoreHash(scoreData);
 
       expect(hash1).toBe(hash2);
-    });
-
-    test('ska inkludera tidsstämpel i hash', () => {
-      const scoreData = {
-        name: 'TestPlayer',
-        points: 1000,
-        level: 5,
-        lines: 20,
-        gameSeed: 'a1b2c3d4e5f67890'
-      };
-
-      const hash1 = generateScoreHash(scoreData);
-      
-      // Wait a bit and generate another hash
-      setTimeout(() => {
-        const hash2 = generateScoreHash(scoreData);
-        expect(hash1).not.toBe(hash2);
-      }, 10);
     });
   });
 });

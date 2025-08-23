@@ -22,7 +22,19 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:"],
     },
   },
+  xFrameOptions: { action: 'deny' },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
 }));
+
+// Lägg till X-XSS-Protection header
+app.use((req, res, next) => {
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 app.use(compression());
 
