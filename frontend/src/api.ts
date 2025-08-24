@@ -1,6 +1,7 @@
+import { config } from './config/env';
 
-
-const API = import.meta.env?.VITE_API_BASE || 'http://localhost:3001';
+// API base URL configuration
+const API = config.apiBase;
 
 export type Score = { 
   _id?: string;

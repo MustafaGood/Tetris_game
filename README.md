@@ -98,8 +98,12 @@ echo "CORS_ORIGIN=http://localhost:3000" >> .env
 
 # Frontend
 cd ../frontend
-echo "VITE_API_BASE=http://localhost:3001" > .env
+npm run setup
 ```
+
+**Viktigt:** Se till att `VITE_API_BASE` i `.env.local` pekar på rätt backend-URL (standard: `http://localhost:3001`).
+
+#### Steg 4: Starta Utvecklingsservern
 
 ## Körning
 

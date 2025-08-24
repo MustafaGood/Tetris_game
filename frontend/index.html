@@ -23,18 +23,28 @@
     
     <!-- Preload critical assets -->
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration - Only in Production -->
     <script>
+      // Service Worker registration - only in production builds
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-              console.log('SW registration failed: ', registrationError);
-            });
-        });
+        // Check if we're in production mode
+        const isProduction = !window.location.hostname.includes('localhost') && 
+                           !window.location.hostname.includes('127.0.0.1') &&
+                           window.location.protocol === 'https:';
+        
+        if (isProduction) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('Service Worker registered successfully:', registration);
+              })
+              .catch((registrationError) => {
+                console.log('Service Worker registration failed:', registrationError);
+              });
+          });
+        } else {
+          console.log('Service Worker disabled in development mode');
+        }
       }
     </script>
   </head>
