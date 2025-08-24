@@ -1,4 +1,4 @@
-const dotenv = require('dotenv');
+import dotenv from 'dotenv';
 
 /*
  Konfigurationsmodul för backend:
@@ -21,7 +21,7 @@ const config = {
     if (getNodeEnv() === 'test') return 'mongodb://127.0.0.1:27017/tetris-test';
     return 'mongodb://127.0.0.1:27017/tetris-dev';
   },
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   SCORE_LIMIT_WINDOW_MS: parseInt(process.env.SCORE_LIMIT_WINDOW_MS) || 60 * 1000,
@@ -41,8 +41,8 @@ const getCorsOrigins = () => {
   return (config.CORS_ORIGIN || '').split(',').map(origin => origin.trim()).filter(Boolean);
 };
 
-module.exports = {
-  ...config,
+export default config;
+export {
   isProduction,
   isDevelopment,
   isTest,

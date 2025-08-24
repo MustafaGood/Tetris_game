@@ -145,16 +145,17 @@ export async function postScore(payload: {
   gameSeed?: string;
 }): Promise<ApiResponse<{ id: string; message: string; expectedScore?: number }>> {
   try {
-    const result = await apiCall<{ ok: boolean; data: { id: number; message: string } }>(`${API}/api/scores`, {
+    const result = await apiCall<{ ok: boolean; id: string; message: string; expectedScore?: number }>(`${API}/api/scores`, {
       method: 'POST',
       body: JSON.stringify(payload)
     });
     
-    if (result && result.ok && result.data) {
+    if (result && result.ok && result.id && result.message) {
       return { 
         data: { 
-          id: result.data.id.toString(), 
-          message: result.data.message 
+          id: result.id, 
+          message: result.message,
+          expectedScore: result.expectedScore
         }, 
         success: true 
       };

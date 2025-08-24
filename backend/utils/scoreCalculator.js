@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const config = require('../config/environment.js');
+import crypto from 'crypto';
+import config from '../config/environment.js';
 
 // Poängmultiplikatorer för olika rad-rensningar (grundvärden)
 const SCORE_MULTIPLIERS = {
@@ -166,7 +166,7 @@ function generateScoreHash(scoreData) {
 }
 
 // Export all functions
-module.exports = {
+export {
   generateGameSeed,
   validateGameSeed,
   calculateExpectedScore,

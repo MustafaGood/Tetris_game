@@ -82,7 +82,9 @@ app.use(compression());
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://127.0.0.1:3000',
+    'http://localhost:5173', // Behåll för kompatibilitet
+    'http://127.0.0.1:5173'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
@@ -95,6 +97,24 @@ app.use(express.json({ limit: '1mb' }));
 // HTTP request logging
 app.use(morgan('combined'));
 
+
+// Root endpoint - API information
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    message: 'Tetris Backend API',
+    version: '2.0.0',
+    endpoints: {
+      health: '/api/health',
+      scores: '/api/scores',
+      topScores: '/api/scores/top',
+      stats: '/api/stats'
+    },
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
 // Hälsokontroll: enklaste möjliga endpoint för att verifiera att servern körs
 app.get('/api/health', (req, res) => {

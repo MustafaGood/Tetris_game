@@ -1,6 +1,6 @@
-const CACHE_NAME = 'tetris-v2.0.3';
-const STATIC_CACHE = 'tetris-static-v2.0.3';
-const DYNAMIC_CACHE = 'tetris-dynamic-v2.0.3';
+const CACHE_NAME = 'tetris-v2.0.4';
+const STATIC_CACHE = 'tetris-static-v2.0.4';
+const DYNAMIC_CACHE = 'tetris-dynamic-v2.0.4';
 
 const STATIC_ASSETS = [
   '/',

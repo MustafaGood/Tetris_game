@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "dev:mongo": "nodemon server-mongo.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -29,7 +30,10 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.0.1",
     "helmet": "^8.1.0",
+    "mongodb": "^6.18.0",
+    "mongoose": "^8.18.0",
     "morgan": "^1.10.1",
     "sqlite3": "^5.1.7"
   },
