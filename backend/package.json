@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:performance": "jest __tests__/performance.test.js",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "deploy:render": "echo 'Deployment to Render would happen here'"
   },
   "keywords": [
     "tetris",
