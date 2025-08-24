@@ -221,7 +221,7 @@ describe('Tetris Spelkomponenter', () => {
       render(<App />, { wrapper: TestWrapper });
       
       // Kontrollera att instruktioner finns
-      expect(screen.getByText(/använd piltangenter för att spela/i)).toBeInTheDocument();
+      expect(screen.getByText(/använd piltangenter  för att spela/i)).toBeInTheDocument();
     });
   });
 

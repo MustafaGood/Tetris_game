@@ -53,7 +53,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onHelp, onInfo, onHighscor
         {/* Footer */}
         <div className="text-gray-400 text-sm mt-8">
           <p>Version 2.0.0 • Byggd med React & TypeScript</p>
-          <p className="mt-1">Använd piltangenter för att spela</p>
+          <p className="mt-1">Använd piltangenter  för att spela</p>
         </div>
       </div>
     </div>
