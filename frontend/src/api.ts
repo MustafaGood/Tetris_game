@@ -54,7 +54,20 @@ async function apiCall<T>(url: string, options?: RequestInit): Promise<T> {
       const errorData = await response.json().catch(() => ({} as any));
       throw new Error((errorData as any).error || (errorData as any).reason || `HTTP ${response.status}: ${response.statusText}`);
     }
-    return await response.json();
+    
+    // Handle empty responses
+    const text = await response.text();
+    if (!text) {
+      console.warn('API returned empty response from:', url);
+      return [] as T; // Return empty array for empty responses
+    }
+    
+    try {
+      return JSON.parse(text);
+    } catch (parseError) {
+      console.error('Failed to parse JSON response from:', url, 'Response:', text);
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+    }
   } catch (error) {
     console.error('API call failed:', error);
     throw error;
@@ -63,8 +76,20 @@ async function apiCall<T>(url: string, options?: RequestInit): Promise<T> {
 
 export async function fetchScores(limit = 10): Promise<Score[]> {
   try {
-    const scores = await apiCall<Score[]>(`${API}/api/scores/top?limit=${limit}`);
-    return scores.map(score => ({ ...score, id: score._id || score.id }));
+    const response = await apiCall<{ ok: boolean; data: Score[] }>(`${API}/api/scores/top?limit=${limit}`);
+    
+    // Handle the actual backend response format: { ok: true, data: scores }
+    if (response && response.ok && Array.isArray(response.data)) {
+      return response.data.map(score => ({ ...score, id: score._id || score.id }));
+    }
+    
+    // Fallback: if response is directly an array (for backward compatibility)
+    if (Array.isArray(response)) {
+      return response.map(score => ({ ...score, id: score._id || score.id }));
+    }
+    
+    console.warn('API returned unexpected response format:', response);
+    return [];
   } catch (error) {
     console.error('Failed to fetch scores:', error);
     return [];
@@ -73,8 +98,38 @@ export async function fetchScores(limit = 10): Promise<Score[]> {
 
 export async function fetchAllScores(page = 1, limit = 20): Promise<{ scores: Score[], pagination: any }> {
   try {
-    const result = await apiCall<{ page: number; size: number; total: number; items: Score[] }>(`${API}/api/scores?page=${page}&size=${limit}`);
-    return { scores: result.items, pagination: { page: result.page, limit: result.size, total: result.total, pages: Math.ceil(result.total / result.size) } };
+    // Backend doesn't support pagination yet, so we'll use the simple scores endpoint
+    const response = await apiCall<{ ok: boolean; data: Score[] }>(`${API}/api/scores?limit=${limit * page}`);
+    
+    // Handle the actual backend response format: { ok: true, data: scores }
+    if (response && response.ok && Array.isArray(response.data)) {
+      const scores = response.data;
+      return { 
+        scores, 
+        pagination: { 
+          page, 
+          limit, 
+          total: scores.length, 
+          pages: 1 // Backend doesn't support pagination yet
+        } 
+      };
+    }
+    
+    // Fallback: if response is directly an array (for backward compatibility)
+    if (Array.isArray(response)) {
+      return { 
+        scores: response, 
+        pagination: { 
+          page, 
+          limit, 
+          total: response.length, 
+          pages: 1 
+        } 
+      };
+    }
+    
+    console.warn('API returned unexpected response format:', response);
+    return { scores: [], pagination: { page, limit, total: 0, pages: 0 } };
   } catch (error) {
     console.error('Failed to fetch all scores:', error);
     return { scores: [], pagination: { page, limit, total: 0, pages: 0 } };
@@ -90,14 +145,21 @@ export async function postScore(payload: {
   gameSeed?: string;
 }): Promise<ApiResponse<{ id: string; message: string; expectedScore?: number }>> {
   try {
-    const result = await apiCall<{ ok: boolean; id: string; message: string; expectedScore?: number }>(`${API}/api/scores`, {
+    const result = await apiCall<{ ok: boolean; data: { id: number; message: string } }>(`${API}/api/scores`, {
       method: 'POST',
       body: JSON.stringify(payload)
     });
     
-    if (result.ok) {
-      return { data: { id: result.id, message: result.message, expectedScore: result.expectedScore }, success: true };
+    if (result && result.ok && result.data) {
+      return { 
+        data: { 
+          id: result.data.id.toString(), 
+          message: result.data.message 
+        }, 
+        success: true 
+      };
     }
+    
     return { error: 'Unknown error occurred', success: false };
   } catch (error) {
     console.error('Failed to post score:', error);
@@ -110,14 +172,20 @@ export async function postScore(payload: {
 
 export async function deleteScore(id: string): Promise<ApiResponse<{ deleted: number; message: string }>> {
   try {
-    const result = await apiCall<{ ok: boolean; deleted: number; message: string }>(`${API}/api/scores/${id}`, {
+    const result = await apiCall<{ ok: boolean; data: { deleted: number; message: string } }>(`${API}/api/scores/${id}`, {
       method: 'DELETE'
     });
     
-    if ((result as any).ok) {
-      const r = result as any;
-      return { data: { deleted: r.deleted, message: r.message }, success: true };
+    if (result && result.ok && result.data) {
+      return { 
+        data: { 
+          deleted: result.data.deleted, 
+          message: result.data.message 
+        }, 
+        success: true 
+      };
     }
+    
     return { error: 'Unknown error occurred', success: false };
   } catch (error) {
     console.error('Failed to delete score:', error);
@@ -130,8 +198,12 @@ export async function deleteScore(id: string): Promise<ApiResponse<{ deleted: nu
 
 export async function fetchStats(): Promise<Stats | null> {
   try {
-    const result = await apiCall<{ ok: boolean; data?: Stats }>(`${API}/api/stats`);
-    if (result && (result as any).ok && (result as any).data) return (result as any).data as Stats;
+    const result = await apiCall<{ ok: boolean; data: Stats }>(`${API}/api/stats`);
+    
+    if (result && result.ok && result.data) {
+      return result.data;
+    }
+    
     return null;
   } catch (error) {
     console.error('Failed to fetch stats:', error);
