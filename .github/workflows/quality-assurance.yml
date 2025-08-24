@@ -1,9 +1,6 @@
 name: Quality Assurance & Testing
 
-# Required Secrets:
-# - RENDER_TOKEN: Token for deploying to Render platform
-#   Set this in your repository secrets (Settings > Secrets and variables > Actions)
-
+# TEMPORARILY DISABLED - Enable after fixing GitHub billing
 on:
   push:
     branches: [ main, develop ]
@@ -22,6 +19,7 @@ jobs:
   frontend-quality:
     name: Frontend Quality
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     
     steps:
       - name: Checkout code
@@ -73,153 +71,53 @@ jobs:
   backend-quality:
     name: Backend Quality
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-          
-      - name: Install dependencies
-        working-directory: backend
-        run: npm ci
-        
-      - name: Lint check
-        working-directory: backend
-        run: npm run lint
-        
-      - name: Run tests
-        working-directory: backend
-        run: npm test
-        
-      - name: Test coverage
-        working-directory: backend
-        run: npm run test:coverage
-        
-      - name: Security audit
-        working-directory: backend
-        run: npm audit --audit-level=moderate
-        
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: backend/coverage/lcov.info
-          flags: backend
-          name: backend-coverage
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
 
   # Integration Testing
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     needs: [frontend-quality, backend-quality]
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-        
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
-        
-      - name: Run basic integration check
-        run: |
-          echo "Running integration checks..."
-          cd frontend && npm run type-check
-          cd ../backend && npm run lint
-          echo "Integration checks completed successfully"
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
 
   # Performance Testing
   performance-tests:
     name: Performance Tests
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     needs: [frontend-quality]
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-          
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-        
-      - name: Build application
-        working-directory: frontend
-        run: npm run build
-        
-      - name: Run performance tests
-        working-directory: frontend
-        run: npm run test:performance
-        
-      - name: Performance audit
-        working-directory: frontend
-        run: npm run performance:audit
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
 
   # Security Scanning
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-        
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
-        
-      - name: Run security audit
-        run: |
-          echo "Running security audit..."
-          cd frontend && npm audit --audit-level=moderate || true
-          cd ../backend && npm audit --audit-level=moderate || true
-          echo "Security audit completed"
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
 
   # Quality Gate
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     needs: [frontend-quality, backend-quality, security-scan]
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Quality check summary
-        run: |
-          echo "## Quality Assurance Summary" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Frontend: Lint, Type check, Tests" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Backend: Lint, Tests" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Security: Audit completed" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 All quality checks passed!" >> $GITHUB_STEP_SUMMARY
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
 
 # Note: Cache configuration is handled within individual jobs using actions/setup-node@v4

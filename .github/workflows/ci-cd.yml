@@ -14,65 +14,18 @@ jobs:
   quality-check:
     name: Quality Check
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-          
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-        
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
-        
-      - name: Frontend lint check
-        working-directory: frontend
-        run: npm run lint
-        
-      - name: Frontend type check
-        working-directory: frontend
-        run: npm run type-check
-        
-      - name: Frontend tests
-        working-directory: frontend
-        run: npm run test:run
-        
-      - name: Backend lint check
-        working-directory: backend
-        run: npm run lint
-        
-      - name: Backend tests
-        working-directory: backend
-        run: npm test
-        
-      - name: Quality check summary
-        run: |
-          echo "## Quality Check Summary" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Frontend: Lint, Type check, Tests" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Backend: Lint, Tests" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 Ready for deployment" >> $GITHUB_STEP_SUMMARY
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
 
   # Security Scan
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Run security audit
-        run: |
-          echo "Running security audit..."
-          cd frontend && npm audit --audit-level=moderate || true
-          cd ../backend && npm audit --audit-level=moderate || true
-          echo "Security audit completed"
+      - name: Temporarily disabled
+        run: echo "Job disabled - fix GitHub billing first"
