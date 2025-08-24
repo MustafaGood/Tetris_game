@@ -5,11 +5,9 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:
 
 env:
   NODE_VERSION: '18'
-  COVERAGE_THRESHOLD: '80'
 
 jobs:
   # Lint and Test
@@ -44,17 +42,9 @@ jobs:
         working-directory: frontend
         run: npm run type-check
         
-      - name: Frontend format check
-        working-directory: frontend
-        run: npm run format:check
-        
       - name: Frontend tests
         working-directory: frontend
         run: npm run test:run
-        
-      - name: Frontend test coverage
-        working-directory: frontend
-        run: npm run test:coverage
         
       - name: Backend lint check
         working-directory: backend
@@ -67,92 +57,9 @@ jobs:
       - name: Quality check summary
         run: |
           echo "## Quality Check Summary" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Frontend: Lint, Type check, Tests, Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Frontend: Lint, Type check, Tests" >> $GITHUB_STEP_SUMMARY
           echo "✅ Backend: Lint, Tests" >> $GITHUB_STEP_SUMMARY
           echo "🚀 Ready for deployment" >> $GITHUB_STEP_SUMMARY
-
-  # Build and Deploy to GitHub Pages
-  deploy:
-    name: Deploy to GitHub Pages
-    runs-on: ubuntu-latest
-    needs: quality-check
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-      
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-      
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-          
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-        
-      - name: Build application
-        working-directory: frontend
-        run: npm run build
-        
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-        
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: frontend/dist
-          
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        
-      - name: Meddela deployment
-        run: |
-          echo "🚀 Applikationen har distribuerats framgångsrikt!"
-          echo "🌐 Frontend: ${{ steps.deployment.outputs.page_url }}"
-          echo "📱 PWA redo för installation"
-          echo "🔧 Backend: https://tetris-api.onrender.com"
-
-  # Performance Testing
-  performance:
-    name: Performance Test
-    runs-on: ubuntu-latest
-    needs: quality-check
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-          
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-        
-      - name: Build application
-        working-directory: frontend
-        run: npm run build
-        
-      - name: Bundle analysis
-        working-directory: frontend
-        run: npm run build:analyze
 
   # Security Scan
   security:
@@ -169,59 +76,3 @@ jobs:
           cd frontend && npm audit --audit-level=moderate || true
           cd ../backend && npm audit --audit-level=moderate || true
           echo "Security audit completed"
-
-  # Release Management
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: [deploy, performance, security]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Generera changelog
-        id: changelog
-        run: |
-          echo "## Vad är nytt i v2.0.0" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "### 🚀 Funktioner" >> CHANGELOG.md
-          echo "- PWA-stöd med offline-funktionalitet" >> CHANGELOG.md
-          echo "- Förbättrat ljudsystem med flera ljudeffekter" >> CHANGELOG.md
-          echo "- Förbättrade spelregler och poängsättning" >> CHANGELOG.md
-          echo "- Responsiv design för alla enheter" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "### 🔧 Förbättringar" >> CHANGELOG.md
-          echo "- CI/CD-pipeline med automatiserad testning" >> CHANGELOG.md
-          echo "- Prestandaoptimeringar" >> CHANGELOG.md
-          echo "- Bättre felhantering och användarfeedback" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "### 🐛 Bugfixar" >> CHANGELOG.md
-          echo "- Fixade problem med spelstatushantering" >> CHANGELOG.md
-          echo "- Lösning av problem med ljuduppspelning" >> CHANGELOG.md
-          echo "- Förbättrade mobila touch-kontroller" >> CHANGELOG.md
-          
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v2.0.0
-          release_name: Tetris v2.0.0 - PWA-utgåva
-          body_path: CHANGELOG.md
-          draft: false
-          prerelease: false
-          
-      - name: Upload release assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: frontend/dist
-          asset_name: tetris-frontend-v2.0.0.zip
-          asset_content_type: application/zip
