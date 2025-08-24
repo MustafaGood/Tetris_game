@@ -219,7 +219,7 @@ router.get("/admin/scores/analysis", async (req, res) => {
   try {
     const { playerName, limit = 50 } = req.query;
 
-    let query = {};
+    const query = {};
     if (playerName) {
       query.name = new RegExp(playerName, 'i');
     }

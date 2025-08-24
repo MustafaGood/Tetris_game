@@ -73,7 +73,7 @@ app.use(express.json({ limit: '1mb' }));
 app.options('*', cors());
 
 // Mock-datastruktur för poäng (i minnet)
-let scores = [
+const scores = [
   {
     id: 1,
     name: 'TestPlayer',

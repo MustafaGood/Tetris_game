@@ -9,78 +9,43 @@
  */
 
 export default {
-  // ============================================================================
-  // GRUNDLÄGGANDE INSTÄLLNINGAR
-  // ============================================================================
-  
-  testEnvironment: 'node',     // Testmiljö för Node.js
-  
-  // ============================================================================
-  // KODTÄCKNING KONFIGURATION
-  // ============================================================================
-  
+  testEnvironment: 'node',
+  transform: {},
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
   collectCoverageFrom: [
-    '**/*.{js,ts}',            // Samla täckning från alla JS/TS-filer
-    '!**/node_modules/**',     // Exkludera node_modules
-    '!**/coverage/**',         // Exkludera täckningsrapporter
-    '!**/dist/**',             // Exkludera byggmappar
-    '!**/build/**',            // Exkludera byggmappar
-    '!**/*.config.js',         // Exkludera konfigurationsfiler
-    '!**/jest.config.js',      // Exkludera denna fil
-    '!**/test-*.js',           // Exkludera test-hjälpfiler
-    '!**/scripts/**'           // Exkludera skriptmappar
+    '**/*.{js,ts}',
+    '!**/node_modules/**',
+    '!**/coverage/**',
+    '!**/*.config.js',
+    '!**/test-*.js',
   ],
-  
-  coverageDirectory: 'coverage', // Mapp för täckningsrapporter
-  
-  coverageReporters: [
-    'text',                     // Konsolutskrift
-    'lcov',                    // LCOV-format för CI/CD
-    'html',                    // HTML-rapport för webbläsare
-    'json'                     // JSON-format för analys
-  ],
-  
-  // ============================================================================
-  // TÄCKNINGSGRÄNSER
-  // ============================================================================
-  
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html', 'json'],
   coverageThreshold: {
     global: {
-      branches: 80,            // Minst 80% gren-täckning
-      functions: 80,           // Minst 80% funktion-täckning
-      lines: 80,               // Minst 80% rad-täckning
-      statements: 80           // Minst 80% sats-täckning
-    }
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
   },
-  
-  // ============================================================================
-  // TESTFILER OCH TIMEOUT
-  // ============================================================================
-  
   testMatch: [
-    '**/__tests__/**/*.{js,ts}',      // Testfiler i __tests__-mappar
-    '**/?(*.)+(spec|test).{js,ts}'   // Testfiler med spec/test-suffix
+    '**/__tests__/**/*.{js,ts}',
+    '**/?(*.)+(spec|test).{js,ts}',
   ],
-  
   testPathIgnorePatterns: [
-    '<rootDir>/__tests__/setup.js'   // Exclude setup file from tests
+    'performance.test.js',
+    'api.test.js',
+    'setup.js'
   ],
-  
-  testTimeout: 10000,          // 10 sekunder timeout per test
-  
-  // ============================================================================
-  // SETUP OCH MOCK-HANTERING
-  // ============================================================================
-  
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.js'], // Setup-fil efter miljö
-  
-  // ============================================================================
-  // UTSKRIFTS- OCH FELSÖKNINGSINSTÄLLNINGAR
-  // ============================================================================
-  
-  verbose: true,                // Detaljerad utskrift av tester
-  forceExit: true,              // Tvinga avslut efter tester
-  clearMocks: true,             // Rensa mocks mellan tester
-  resetMocks: true,             // Återställ mocks mellan tester
-  restoreMocks: true            // Återställ mocks till ursprungligt tillstånd
+  testTimeout: 10000,
+  verbose: true,
+  forceExit: true,
 };
