@@ -47,9 +47,8 @@ Ett komplett och moderniserat Tetris-spel byggt med React, TypeScript, Node.js o
 ### Teknisk Integration
 - **Backend-anslutning** med robust felhantering
 - **Real-time uppdateringar** av highscores
-- **Offline-stöd** med lokal lagring och service worker
+- **Lokal lagring** för offline-funktionalitet
 - **API-integration** för framtida utbyggnad
-- **PWA-funktionalitet** med manifest och service worker
 
 ## Teknisk Stack
 
@@ -249,8 +248,9 @@ Det här projektet fungerar redan som ett komplett Tetris-spel med frontend, bac
 1. **Multiplayer-läge online** – låta flera spelare tävla mot varandra i realtid.  
 2. **Autentisering och leaderboard** – införa användarkonton, inloggning och en global highscore-lista.  
 3. **AI-spelare** – utveckla en bot som kan spela Tetris automatiskt, antingen som motståndare eller för analys.  
-4. **PWA och offline-stöd** – göra spelet helt spelbart utan internet och synka poäng när nätverk finns.  
-5. **Testning och säkerhet** – fler automatiserade tester, bättre anti-fusk-kontroller och en skalbar backend.
+4. **PWA och offline-stöd** – implementera Progressive Web App-funktionalitet med service worker, manifest-fil och full offline-stöd för att göra spelet helt spelbart utan internet och synka poäng när nätverk finns.  
+5. **Ljud och musik** – lägga till ljudeffekter, bakgrundsmusik och ljudinställningar för en mer engagerande spelupplevelse.
+6. **Testning och säkerhet** – fler automatiserade tester, bättre anti-fusk-kontroller och en skalbar backend.
 
 ## Felsökning
 
