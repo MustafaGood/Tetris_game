@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "no-start-duplicated-conjunction": true,
+    "write-good": {
+      "passive": false,
+      "weasel": true,
+      "tooWordy": true
+    }
+  }
+}
+
