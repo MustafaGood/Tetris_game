@@ -78,7 +78,7 @@ Ett komplett och moderniserat Tetris-spel byggt med React, TypeScript, Node.js o
 
 #### Steg 1: Klona Projektet
 ```bash
-git clone https://github.com/your-username/Tetris_game.git
+git clone https://github.com/MustafaGood/Tetris_game.git
 cd Tetris_game
 ```
 
